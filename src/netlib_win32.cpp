@@ -1,0 +1,123 @@
+#include "netlib/netlib.h"
+#include "netlib/thread.h"
+#include "netlib/uthread.h"
+#include "netlib/socket.h"
+#include "netlib/pipe.h"
+#include "netlib/file.h"
+#include "netlib_win32.h"
+
+namespace netlib
+{	
+	HANDLE gCompletionPort = NULL;
+	static bool gIsDone;
+	static int gRetVal;
+
+	NETLIB_API bool init()
+	{
+		gIsDone = false;
+		gRetVal = 0;
+
+		gCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, (ULONG_PTR)0, 0);
+		if(!gCompletionPort)
+			return false;
+
+		if(!thread::init())
+			return false;
+
+		if(!uthread::init())
+			return false;
+
+		if(!socket::init())
+			return false;
+
+		if(!pipe::init())
+			return false;
+
+		if(!file::init())
+			return false;
+
+		return true;
+	}
+
+	NETLIB_API void exit(int _val)
+	{
+		if(!gIsDone)
+		{
+			gRetVal = _val;
+			gIsDone = true;
+
+			file::shutdown();
+			pipe::shutdown();
+			socket::shutdown();
+			uthread::shutdown();
+			thread::shutdown();
+
+			if(gCompletionPort)
+			{
+				CloseHandle(gCompletionPort);
+				gCompletionPort = NULL;
+			}
+		}
+	}
+
+	NETLIB_API int exit_value()
+	{
+		return gRetVal;
+	}
+
+	NETLIB_API bool think()
+	{
+		if(gIsDone)
+			return false;
+
+		MSG msg;
+		while(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		DWORD numDone = 0;
+		ULONG_PTR key;
+		iocp_async_state *state;
+
+		while(true)
+		{
+			if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
+				(OVERLAPPED**)&state, 0) == TRUE)
+			{
+				state->error = 0;
+				state->amount = numDone;
+
+				if(state->handler)
+					state->handler(state);
+				else
+					state->thread->resume();
+			}
+			else if(state)
+			{
+				state->error = GetLastError();
+				state->amount = 0;
+
+				if(state->handler)
+					state->handler(state);
+				else
+					state->thread->resume();
+			}
+			else
+				break;
+		}
+
+		SleepEx(0, TRUE);
+
+		return true;
+	}
+
+	NETLIB_API int run_main_loop()
+	{
+		while(think())
+			uthread::schedule();
+
+		return exit_value();
+	}
+}
