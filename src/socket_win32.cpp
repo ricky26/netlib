@@ -90,6 +90,11 @@ namespace netlib
 		}
 	}
 	
+	socket::socket(socket_constructor_t const& _con)
+	{
+		mInternal = _con.value;
+	}
+	
 	socket::socket(socket &_other)
 	{
 		mInternal = _other.mInternal;
@@ -115,6 +120,13 @@ namespace netlib
 	int socket::release()
 	{
 		int ret = (int)mInternal;
+		mInternal = (void*)INVALID_SOCKET;
+		return ret;
+	}
+	
+	socket_constructor_t socket::returnable_value()
+	{
+		void *ret = mInternal;
 		mInternal = (void*)INVALID_SOCKET;
 		return ret;
 	}
@@ -231,7 +243,7 @@ namespace netlib
 		return true;
 	}
 
-	socket socket::accept()
+	socket_constructor_t socket::accept()
 	{
 		socket ret;
 
@@ -254,7 +266,7 @@ namespace netlib
 			}
 		}
 
-		return ret;
+		return (void*)ret.release();
 	}
 
 	void socket::close()

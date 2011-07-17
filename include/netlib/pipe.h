@@ -10,12 +10,12 @@ namespace netlib
 	{
 		friend class pipe;
 
-		pipe_constructor_t(int _handle)
-			: handle(_handle)
+		pipe_constructor_t(void *_val)
+			: value(_val)
 		{
 		}
 
-		int handle;
+		void *value;
 	};
 
 	class socket;
@@ -31,6 +31,8 @@ namespace netlib
 		bool valid() const;
 		int handle() const;
 		int release();
+
+		pipe_constructor_t returnable_value();
 		
 		bool open(std::string const& _pipe);
 		bool create(std::string const& _pipe);

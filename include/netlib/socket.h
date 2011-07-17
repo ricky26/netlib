@@ -27,12 +27,10 @@ namespace netlib
 		friend class pipe;
 		friend class socket;
 
-		socket_constructor_t(int _fd)
-		{
-			fd = _fd;
-		}
+		inline socket_constructor_t(void *_val)
+			: value(_val) {}
 
-		int fd;
+		void *value;
 	};
 
 	class NETLIB_API socket: public bitstream
@@ -53,6 +51,8 @@ namespace netlib
 		bool valid() const;
 		int handle() const;
 		int release();
+
+		socket_constructor_t returnable_value();
 		
 		bool connect(std::string const& _host, int _port);
 		bool listen(int _port, int _amt=15);

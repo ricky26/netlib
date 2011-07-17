@@ -6,6 +6,7 @@
 #	else
 #		define NETLIB_API __declspec(dllimport)
 #	endif
+#	define NETLIB_INLINE __forceinline
 
 	// Disable some stupid MSVC warnings
 #	pragma warning(disable:4251 4996)
@@ -15,6 +16,7 @@
 #	else
 #		define NETLIB_API 
 #	endif
+#	define NETLIB_INLINE inline
 #endif
 
 #include <stdint.h>
