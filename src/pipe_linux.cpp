@@ -60,6 +60,11 @@ namespace netlib
 		_p.mInternal = new pipe_internal();
 	}
 
+	pipe::pipe(pipe_constructor_t const& _con)
+	{
+		mInternal = _con.value;
+	}
+
 	pipe::~pipe()
 	{
 		if(mInternal)
@@ -84,6 +89,13 @@ namespace netlib
 		pi->fd = -1;
 
 		return hdl;
+	}
+
+	pipe_constructor_t pipe::returnable_value()
+	{
+		void *ret = mInternal;
+		mInternal = new pipe_internal();
+		return ret;
 	}
 		
 	bool pipe::open(std::string const& _pipe)
@@ -161,7 +173,7 @@ namespace netlib
 	{
 		pipe_internal *pi = pipe_internal::get(mInternal);
 		if(pi->fd == -1)
-			return -1;
+			return new pipe_internal();
 
 		sockaddr_un addr;
 		socklen_t len = sizeof(addr);
@@ -178,10 +190,11 @@ namespace netlib
 		if(ret == -1)
 		{
 			close();
-			return -1;
+			return new pipe_internal();
 		}
 
-		return ret;
+		pipe p(ret);
+		return p.returnable_value();
 	}
 
 	void pipe::close()
@@ -244,7 +257,8 @@ namespace netlib
 		
 	socket_constructor_t pipe::read()
 	{
-		return -1; // TODO: Write this.
+		socket s;
+		return s.returnable_value(); // TODO: Write this.
 	}
 
 	bool pipe::write(socket &_sock)

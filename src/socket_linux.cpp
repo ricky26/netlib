@@ -109,13 +109,7 @@ namespace netlib
 
 	socket::socket(socket_constructor_t const& _con)
 	{
-		int fd = _con.fd;
-		socket_internal *si = new socket_internal(fd);
-
-		if(fd >= 0)
-			si->aio.make_nonblocking(fd);
-
-		mInternal = si;
+		mInternal = _con.value;
 	}
 	
 	socket::socket(socket &_other)
@@ -145,6 +139,13 @@ namespace netlib
 		socket_internal *si = socket_internal::get(mInternal);
 		int ret = si->fd;
 		si->fd = -1;
+		return ret;
+	}
+
+	socket_constructor_t socket::returnable_value()
+	{
+		void *ret = mInternal;
+		mInternal = new socket_internal();
 		return ret;
 	}
 	
@@ -235,10 +236,11 @@ namespace netlib
 		{
 			std::cerr << "Accept failed %d.\n" << errno << std::endl;
 			close();
-			return -1;
+			return new socket_internal();
 		}
 
-		return ret;
+		socket s(ret);
+		return s.returnable_value();
 	}
 
 	void socket::close()
