@@ -12,6 +12,19 @@ namespace netlib
 		class websocket;
 	}
 
+	class websocket_constructor_t
+	{
+		friend class websocket::websocket;
+		friend class http_response;
+
+		websocket_constructor_t(netlib::socket *_sock)
+			: socket(_sock)
+		{
+		}
+
+		netlib::socket *socket;
+	};
+
 	typedef std::map<std::string, std::string> http_headers;
 
 	class NETLIB_API http_request
@@ -47,11 +60,11 @@ namespace netlib
 		using bitstream::write;
 		using bitstream::write_block;
 
-		http_response(socket &_sock, int _response=200,
+		http_response(netlib::socket &_sock, int _response=200,
 			std::string const& _message="OK", std::string const& _version="1.1");
 		~http_response();
 
-		socket &socket();
+		netlib::socket &socket();
 
 		http_headers &headers();
 		std::string header(std::string const&) const;
@@ -77,7 +90,7 @@ namespace netlib
 		// streaming fashion.
 		void send_headers();
 
-		websocket::websocket accept_websocket(http_request const& _req, std::string const& _prot);
+		websocket_constructor_t accept_websocket(http_request const& _req, std::string const& _prot);
 
 	protected:
 		netlib::socket &mSocket;

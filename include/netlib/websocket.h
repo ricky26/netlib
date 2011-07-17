@@ -45,10 +45,10 @@ namespace netlib
 		class NETLIB_API frame
 		{
 		public:
-			frame(opcode _type=op_cont, int flags=0, std::string const& _data="", uint32_t _mask=0);
+			frame(netlib::websocket::opcode _type=op_cont, int flags=0, std::string const& _data="", uint32_t _mask=0);
 
 			bool valid() const;
-			opcode opcode() const;
+			netlib::websocket::opcode opcode() const;
 			int flags() const;
 			std::string data() const;
 			uint32_t mask() const;
@@ -73,7 +73,7 @@ namespace netlib
 
 			frame read();
 			bool write(frame const& _frm);
-			bool write(std::string const& _data, opcode _code=op_text, int _flags=0);
+			bool write(std::string const& _data, netlib::websocket::opcode _code=op_text, int _flags=0);
 			void close(std::string const& _msg="");
 
 			void ping(std::string const& _text="");

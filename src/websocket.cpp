@@ -2,6 +2,7 @@
 #include "netlib/socket.h"
 #include <sstream>
 #include <memory>
+#include <cstring>
 
 namespace netlib
 {
@@ -197,7 +198,7 @@ namespace netlib
 				uint32_t *buf = new uint32_t[amt];
 				std::auto_ptr<uint32_t> bufptr(buf); // Make sure buf is deleted
 
-				memcpy(buf, data.data(), data.size());
+				std::memcpy(buf, data.data(), data.size());
 
 				for(size_t i = 0; i < amt; i++)
 					buf[i] ^= mask;

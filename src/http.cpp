@@ -5,6 +5,11 @@
 #include "netlib/sha1.h"
 #include "netlib/base64.h"
 #include "netlib/websocket.h"
+#include <string.h>
+
+#ifdef _WIN32
+#define strcasecmp stricmp
+#endif
 
 namespace netlib
 {
@@ -64,7 +69,7 @@ namespace netlib
 	bool http_request::is_websocket_request() const
 	{
 		return header("Connection").find("Upgrade") != std::string::npos
-			&& (stricmp(header("Upgrade").data(), "WebSocket") == 0);
+			&& (strcasecmp(header("Upgrade").data(), "WebSocket") == 0);
 	}
 
 	//
@@ -223,7 +228,7 @@ namespace netlib
 		return val/div;
 	}
 
-	ws::websocket http_response::accept_websocket(http_request const& _req, std::string const& _protocol)
+	websocket_constructor_t http_response::accept_websocket(http_request const& _req, std::string const& _protocol)
 	{
 		std::string key1 = _req.header("Sec-WebSocket-Key1");
 		if(!key1.empty())
@@ -254,7 +259,7 @@ namespace netlib
 			write(resp.data(), resp.size());
 			flush();
 
-			return ws::websocket(&mSocket);
+			return &mSocket;
 		}
 		else
 		{
@@ -279,10 +284,10 @@ namespace netlib
 			send_headers();
 			flush();
 
-			return ws::websocket(&mSocket);
+			return &mSocket;
 		}
 
-		return ws::websocket();
+		return NULL;
 	}
 
 	//

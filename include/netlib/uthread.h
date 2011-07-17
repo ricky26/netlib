@@ -84,7 +84,7 @@ namespace netlib
 
 		static void schedule();
 		void schedule(scheduler*);
-		scheduler *scheduler() const;
+		netlib::scheduler *scheduler() const;
 
 		static void suspend();
 		static void exit();

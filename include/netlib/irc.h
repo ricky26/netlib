@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 
+#pragma once
+
 namespace netlib
 {
 	class NETLIB_API irc_message
@@ -19,6 +21,7 @@ namespace netlib
 		std::string command() const;
 
 		const parameters_t &parameters() const;
+		inline std::string parameter(size_t _x) const { return parameters()[_x]; }
 
 		std::ostream &write(std::ostream &) const;
 		void write(bitstream *) const;
@@ -38,6 +41,8 @@ namespace netlib
 
 	namespace irc
 	{
+		typedef netlib::irc_message::parameters_t params_t;
+
 		NETLIB_API std::ostream &endl(std::ostream&);
 		
 		NETLIB_API irc_message notice(std::string const& _text);

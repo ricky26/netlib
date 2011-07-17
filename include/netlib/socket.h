@@ -22,6 +22,19 @@ namespace netlib
 		prot_any,
 	};
 
+	class socket_constructor_t
+	{
+		friend class pipe;
+		friend class socket;
+
+		socket_constructor_t(int _fd)
+		{
+			fd = _fd;
+		}
+
+		int fd;
+	};
+
 	class NETLIB_API socket: public bitstream
 	{
 	public:
@@ -32,6 +45,7 @@ namespace netlib
 
 		socket(address_family _af=af_inet,
 			socket_type _sock=sock_stream, socket_protocol _prot=prot_any);
+		socket(socket_constructor_t const& _con);
 		explicit socket(int _sock);
 		socket(socket &);
 		virtual ~socket();
@@ -42,7 +56,7 @@ namespace netlib
 		
 		bool connect(std::string const& _host, int _port);
 		bool listen(int _port, int _amt=15);
-		socket accept();
+		socket_constructor_t accept();
 		void close();
 
 		virtual size_t read(void *_buffer, size_t _amt);		

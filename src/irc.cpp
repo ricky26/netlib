@@ -121,7 +121,7 @@ namespace netlib
 	irc_message irc_message::parse(std::vector<char> &_data)
 	{
 		irc_message msg;
-		size_t cnt = parse(&_data.front(), _data.size(), &msg);
+		size_t cnt = parse(&_data[0], _data.size(), &msg);
 		if(cnt > 0)
 			_data.erase(_data.begin(), _data.begin() + cnt);
 
@@ -139,7 +139,7 @@ namespace netlib
 			it != mParameters.end(); it++)
 		{
 			std::string const& str = *it;
-			if(str.front() == ':'
+			if(str[0] == ':'
 				|| str.find(' ') != std::string::npos)
 			{
 				_str << " :" << str;

@@ -1,5 +1,10 @@
 #include "netlib/string.h"
+#include <string.h>
 #include <cctype>
+
+#ifdef _WIN32
+#define strncasecmp strnicmp
+#endif
 
 namespace netlib
 {
@@ -30,6 +35,6 @@ namespace netlib
 		if(_a.size() != _b.size())
 			return false;
 
-		return !strnicmp(_a.data(), _b.data(), _a.size());
+		return !strncasecmp(_a.data(), _b.data(), _a.size());
 	}
 }
