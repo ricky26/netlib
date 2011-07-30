@@ -13,11 +13,11 @@ namespace netlib
 		fn_t fn;
 		T1 a1;
 
-		thread_wrapper1(fn_t _fn, T1 _1): fn(_fn), a1(_1)
+		inline thread_wrapper1(fn_t _fn, T1 _1): fn(_fn), a1(_1)
 		{
 		}
 
-		static void run(void *_p)
+		static inline void run(void *_p)
 		{
 			self_t *self = static_cast<self_t*>(_p);
 			self->fn(self->a1);
@@ -35,12 +35,12 @@ namespace netlib
 		T1 a1;
 		T2 a2;
 
-		thread_wrapper2(fn_t _fn, T1 _1, T2 _2)
+		inline thread_wrapper2(fn_t _fn, T1 _1, T2 _2)
 			: fn(_fn), a1(_1), a2(_2)
 		{
 		}
 
-		static void run(void *_p)
+		static inline void run(void *_p)
 		{
 			self_t *self = static_cast<self_t*>(_p);
 			self->fn(self->a1, self->a2);
@@ -59,12 +59,12 @@ namespace netlib
 		T2 a2;
 		T3 a3;
 
-		thread_wrapper3(fn_t _fn, T1 _1, T2 _2, T3 _3)
+		inline thread_wrapper3(fn_t _fn, T1 _1, T2 _2, T3 _3)
 			: fn(_fn), a1(_1), a2(_2), a3(_3)
 		{
 		}
 
-		static void run(void *_p)
+		static inline void run(void *_p)
 		{
 			self_t *self = static_cast<self_t*>(_p);
 			self->fn(self->a1, self->a2, self->a3);
@@ -84,12 +84,12 @@ namespace netlib
 		T3 a3;
 		T4 a4;
 
-		thread_wrapper4(fn_t _fn, T1 _1, T2 _2, T3 _3, T4 _4)
+		inline thread_wrapper4(fn_t _fn, T1 _1, T2 _2, T3 _3, T4 _4)
 			: fn(_fn), a1(_1), a2(_2), a3(_3), a4(_4)
 		{
 		}
 
-		static void run(void *_p)
+		static inline void run(void *_p)
 		{
 			self_t *self = static_cast<self_t*>(_p);
 			self->fn(self->a1, self->a2, self->a3, self->a4);

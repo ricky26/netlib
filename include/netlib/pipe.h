@@ -39,8 +39,8 @@ namespace netlib
 		pipe_constructor_t accept();
 		void close();
 
-		virtual size_t read(void *_buffer, size_t _amt);
-		virtual size_t write(const void *_buffer, size_t _amt);
+		virtual size_t read(void *_buffer, size_t _amt) override;
+		virtual size_t write(const void *_buffer, size_t _amt) override;
 
 		virtual socket_constructor_t read();
 		virtual bool write(socket&);

@@ -40,26 +40,26 @@ namespace netlib
 		typedef T *ptr_t;
 		typedef handle<T> handle_t;
 
-		handle()
+		inline handle()
 		{
 			ptr = NULL;
 		}
 
-		handle(ptr_t _t)
+		inline handle(ptr_t _t)
 		{
 			ptr = _t;
 			if(ptr)
 				ptr->acquire();
 		}
 
-		handle(handle_t const& _h)
+		inline handle(handle_t const& _h)
 		{
 			ptr = _h.ptr;
 			if(ptr)
 				ptr->acquire();
 		}
 
-		~handle()
+		inline ~handle()
 		{
 			if(ptr)
 				ptr->release();
@@ -67,42 +67,49 @@ namespace netlib
 
 		void reset(ptr_t _p)
 		{
-			if(ptr == _p)
-				return;
-
-			if(ptr)
-				ptr->release();
-
+			ptr_t old = ptr;
 			ptr = _p;
 
 			if(ptr)
 				ptr->acquire();
+
+			if(old)
+				old->release();
 		}
 
-		ptr_t get() const
+		inline ptr_t get() const
 		{
 			return ptr;
 		}
 
-		ptr_t take()
+		inline ptr_t take()
 		{
 			ptr_t ret = ptr;
 			ptr = NULL;
 			return ret;
 		}
 
-		void release()
+		inline void release()
 		{
 			reset(NULL);
 		}
 
-		handle_t &operator =(handle_t const& _src)
+		inline operator bool()
 		{
-			reset(_src.ptr);
-			return *this;
+			return ptr != NULL;
 		}
 
-		ptr_t operator ->() const
+		inline bool operator ==(handle_t const& _other)
+		{
+			return ptr == _other.ptr;
+		}
+
+		inline bool operator !=(handle_t const& _other)
+		{
+			return ptr != _other.ptr;
+		}
+
+		inline ptr_t operator ->() const
 		{
 			return get();
 		}

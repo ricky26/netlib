@@ -5,6 +5,7 @@
 #include "netlib/pipe.h"
 #include "netlib/file.h"
 #include "netlib_win32.h"
+#include <iostream> // asas
 
 namespace netlib
 {	
@@ -79,7 +80,7 @@ namespace netlib
 
 		DWORD numDone = 0;
 		ULONG_PTR key;
-		iocp_async_state *state;
+		iocp_async_state *state = NULL;
 
 		while(true)
 		{
@@ -109,7 +110,6 @@ namespace netlib
 		}
 
 		SleepEx(0, TRUE);
-
 		return true;
 	}
 

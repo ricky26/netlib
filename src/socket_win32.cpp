@@ -292,7 +292,7 @@ namespace netlib
 				uthread::suspend();
 				err = state.error;
 			}
-			
+			CRITICAL_SECTION;
 			if(err)
 			{
 				std::cerr << "Recv Err: " << WSAGetLastError() << std::endl;

@@ -115,17 +115,8 @@ namespace netlib
 
 	bool thread::join()
 	{
-		return true;
-	}
-
-	bool thread::suspend()
-	{
-		return true;
-	}
-
-	bool thread::resume()
-	{
-		return true;
+		DWORD ret = WaitForSingleObject(((thread_impl*)this)->handle, INFINITE);
+		return ret == WAIT_OBJECT_0;
 	}
 
 	int thread::protection() const
@@ -163,15 +154,15 @@ namespace netlib
 		int ret = 0;
 
 		thread_impl::setup();
-		try
-		{
+		//try
+		//{
 			ths->function(ths->argument);
-		}
+		/*}
 		catch(std::exception const& _e)
 		{
 			std::cerr << "Exception occurred in thread "
 				<< ths << ": " << _e.what() << std::endl;
-		}
+		}*/
 		thread_impl::cleanup();
 
 		return (DWORD)ret;
@@ -207,5 +198,97 @@ namespace netlib
 	void thread::shutdown()
 	{
 		thread_impl::cleanup();
+	}
+
+	//
+	// thread_condition
+	//
+
+	thread_condition::thread_condition()
+	{
+		InitializeConditionVariable((CONDITION_VARIABLE*)&mInternal);
+	}
+
+	thread_condition::~thread_condition()
+	{
+	}
+
+	//
+	// critical_section
+	//
+
+	critical_section::critical_section()
+	{
+		mInternal = new CRITICAL_SECTION;
+		InitializeCriticalSection((CRITICAL_SECTION*)mInternal);
+	}
+
+	critical_section::~critical_section()
+	{
+		delete (CRITICAL_SECTION*)mInternal;
+	}
+
+	bool critical_section::try_lock()
+	{
+		return TryEnterCriticalSection((CRITICAL_SECTION*)mInternal) == TRUE;
+	}
+
+	void critical_section::lock()
+	{
+		EnterCriticalSection((CRITICAL_SECTION*)mInternal);
+	}
+
+	void critical_section::unlock()
+	{
+		LeaveCriticalSection((CRITICAL_SECTION*)mInternal);
+	}
+
+	void critical_section::wait(thread_condition &_con)
+	{
+		SleepConditionVariableCS((CONDITION_VARIABLE*)&_con.mInternal,
+			(CRITICAL_SECTION*)mInternal, INFINITE);
+	}
+
+	//
+	// rw_lock
+	//
+
+	rw_lock::rw_lock()
+	{
+		InitializeSRWLock((SRWLOCK*)&mInternal);
+	}
+
+	rw_lock::~rw_lock()
+	{
+	}
+
+	bool rw_lock::try_lock_read()
+	{
+		return TryAcquireSRWLockShared((SRWLOCK*)&mInternal) == TRUE;
+	}
+
+	void rw_lock::lock_read()
+	{
+		AcquireSRWLockShared((SRWLOCK*)&mInternal);
+	}
+
+	void rw_lock::unlock_read()
+	{
+		ReleaseSRWLockShared((SRWLOCK*)&mInternal);
+	}
+
+	bool rw_lock::try_lock_write()
+	{
+		return TryAcquireSRWLockExclusive((SRWLOCK*)&mInternal) == TRUE;
+	}
+
+	void rw_lock::lock_write()
+	{
+		AcquireSRWLockExclusive((SRWLOCK*)&mInternal);
+	}
+
+	void rw_lock::unlock_write()
+	{
+		ReleaseSRWLockExclusive((SRWLOCK*)&mInternal);
 	}
 }

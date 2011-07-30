@@ -81,8 +81,8 @@ namespace netlib
 		// Set default parameters based on request.
 		void setup(http_request const& _req);
 
-		virtual size_t read(void *_buffer, size_t _amt);
-		virtual size_t write(const void *_buffer, size_t _amt);
+		virtual size_t read(void *_buffer, size_t _amt) override;
+		virtual size_t write(const void *_buffer, size_t _amt) override;
 		virtual void flush();
 
 		// Send the headers now, no Content-Length will be

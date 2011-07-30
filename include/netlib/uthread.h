@@ -2,6 +2,8 @@
 
 #include "thread_wrapper.h"
 #include "ref_counted.h"
+#include "thread.h"
+#include <list>
 
 namespace std
 {
@@ -11,14 +13,15 @@ namespace std
 namespace netlib
 {
 	class scheduler;
-	class thread;
 
 	class NETLIB_API uthread: public ref_counted
 	{
 	public:
 		friend class uthread_impl;
+		friend class scheduler;
 
 		typedef handle<uthread> handle_t;
+		typedef std::list<handle_t> list_t;
 
 		virtual ~uthread();
 		virtual void destroy();
@@ -82,16 +85,23 @@ namespace netlib
 			redirect_exceptions(NULL);
 		}
 
-		static void schedule();
+		static bool schedule();
 		void schedule(scheduler*);
-		netlib::scheduler *scheduler() const;
+
+		NETLIB_INLINE netlib::scheduler *scheduler() const { return mScheduler; }
+		NETLIB_INLINE bool suspended() const { return mSuspended; }
+		NETLIB_INLINE bool dead() const { return mDead; }
 
 		static void suspend();
 		static void exit();
 
-		int protection() const;
+		NETLIB_INLINE int protection() const { return mProtection; }
 		static int protect();
 		static int unprotect();
+
+		// Set a specific thread to exclusively run this uthread.
+		NETLIB_INLINE handle<netlib::thread> thread() const { return mThread; }
+		void set_thread(handle<netlib::thread> const& _h);
 
 		static void redirect_exceptions(handle_t _h);
 
@@ -99,8 +109,18 @@ namespace netlib
 		static void shutdown();
 		static void enable_uthread(); // Enables uthreads on the current thread.
 
+	protected:
+		NETLIB_INLINE list_t::iterator current_position() const { return mPosition; }
+
 	private:
 		uthread();
+		
+		bool mSuspended;
+		bool mDead;
+		handle<netlib::thread> mThread;
+		list_t::iterator mPosition;
+		netlib::scheduler *mScheduler;
+		int mProtection;
 	};
 
 	class NETLIB_API scheduler
@@ -112,15 +132,16 @@ namespace netlib
 		scheduler();
 		virtual ~scheduler();
 
-		void insert(uthread *_thr);
-		void schedule();
-
 		handle<thread> create_worker_thread();
 		void create_worker_threads(int _icnt);
 
 	protected:
-		uthread *mFirst;
-		uthread *mLast;
-		void *mInternal;
+		virtual void schedule(uthread* _h);
+		virtual void unschedule(uthread* _h);
+		virtual bool swap();
+
+	private:
+		critical_section mLock;
+		uthread::list_t mScheduled;
 	};
 }

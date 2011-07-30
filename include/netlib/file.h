@@ -45,8 +45,8 @@ namespace netlib
 		bool open(std::string const& _path, int _mode);
 		void close();
 		
-		virtual size_t read(void *_buffer, size_t _amt);
-		virtual size_t write(const void *_buffer, size_t _amt);
+		virtual size_t read(void *_buffer, size_t _amt) override;
+		virtual size_t write(const void *_buffer, size_t _amt) override;
 		bool seek(seek_pos_t _pos, seek_t _mode);
 
 		virtual void flush();

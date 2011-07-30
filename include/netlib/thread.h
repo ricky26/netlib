@@ -18,8 +18,7 @@ namespace netlib
 		virtual ~thread();
 
 		bool join();
-		bool suspend();
-		bool resume();
+		static void exit();
 
 		int protection() const;
 		static int protect();
@@ -31,21 +30,21 @@ namespace netlib
 		static handle_t create(void_fn_t _fn);
 
 		template<typename T1>
-		static handle_t create(typename thread_wrapper1<T1>::fn_t _fn, T1 _1)
+		static inline handle_t create(typename thread_wrapper1<T1>::fn_t _fn, T1 _1)
 		{
 			void *ptr = new thread_wrapper1<T1>(_fn, _1);
 			return create(thread_wrapper1<T1>::run, ptr);
 		}
 
 		template<typename T1, typename T2>
-		static handle_t create(typename thread_wrapper2<T1, T2>::fn_t _fn, T1 _1, T2 _2)
+		static inline handle_t create(typename thread_wrapper2<T1, T2>::fn_t _fn, T1 _1, T2 _2)
 		{
 			void *ptr = new thread_wrapper2<T1, T2>(_fn, _1, _2);
 			return create(thread_wrapper2<T1, T2>::run, ptr);
 		}
 
 		template<typename T1, typename T2, typename T3>
-		static handle_t create(typename thread_wrapper3<T1, T2, T3>::fn_t _fn,
+		static inline handle_t create(typename thread_wrapper3<T1, T2, T3>::fn_t _fn,
 				T1 _1, T2 _2, T3 _3)
 		{
 			typedef thread_wrapper3<T1, T2, T3> wrap_t;
@@ -54,7 +53,7 @@ namespace netlib
 		}
 
 		template<typename T1, typename T2, typename T3, typename T4>
-		static handle_t create(typename thread_wrapper4<T1, T2, T3, T4>::fn_t _fn,
+		static inline handle_t create(typename thread_wrapper4<T1, T2, T3, T4>::fn_t _fn,
 				T1 _1, T2 _2, T3 _3, T4 _4)
 		{
 			typedef thread_wrapper4<T1, T2, T3, T4> wrap_t;
@@ -67,5 +66,65 @@ namespace netlib
 
 	private:
 		thread();
+	};
+
+	class NETLIB_API thread_condition
+	{
+	public:
+		friend class critical_section;
+
+		thread_condition();
+		virtual ~thread_condition();
+
+	private:
+		void *mInternal;
+	};
+	
+	class NETLIB_API critical_section
+	{
+	public:
+		critical_section();
+		virtual ~critical_section();
+
+		bool try_lock();
+		void lock();
+		void unlock();
+
+		void wait(thread_condition&);
+
+	private:
+		void *mInternal;
+	};
+
+	class NETLIB_API rw_lock
+	{
+	public:
+		rw_lock();
+		virtual ~rw_lock();
+
+		bool try_lock_read();
+		void lock_read();
+		void unlock_read();
+
+		bool try_lock_write();
+		void lock_write();
+		void unlock_write();
+
+	private:
+		void *mInternal;
+	};
+
+	template<critical_section &cs>
+	struct NETLIB_API critical_lock
+	{
+		inline critical_lock()
+		{
+			cs.lock();
+		}
+
+		inline ~critical_lock()
+		{
+			cs.unlock();
+		}
 	};
 }

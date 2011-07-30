@@ -139,7 +139,12 @@ namespace netlib
 			it != mParameters.end(); it++)
 		{
 			std::string const& str = *it;
-			if(str[0] == ':'
+			if(!str.empty() && str[0] == ':')
+			{
+				_str << " " << str;
+				break;
+			}
+			else if(str.empty()
 				|| str.find(' ') != std::string::npos)
 			{
 				_str << " :" << str;
@@ -184,6 +189,14 @@ namespace netlib
 			params.push_back(_text);
 
 			return irc_message("NOTICE", params);
+		}
+
+		NETLIB_API irc_message error(std::string const& _text, std::string const& _sender)
+		{
+			irc_message::parameters_t params;
+			params.push_back(_text);
+
+			return irc_message("ERROR", params, _sender);
 		}
 
 		NETLIB_API irc_message nick(std::string const& _nick, std::string const& _src)

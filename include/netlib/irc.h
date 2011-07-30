@@ -46,6 +46,7 @@ namespace netlib
 		NETLIB_API std::ostream &endl(std::ostream&);
 		
 		NETLIB_API irc_message notice(std::string const& _text);
+		NETLIB_API irc_message error(std::string const& _text, std::string const& _src="");
 		NETLIB_API irc_message nick(std::string const& _nick, std::string const& _src="");
 	};
 }
