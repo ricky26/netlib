@@ -37,17 +37,14 @@ namespace netlib
 				current = new thread_impl(GetCurrentThread());
 			else
 				uthread::enable_uthread();
+
+			current->acquire();
 		}
 
 		static void cleanup()
 		{
 			if(current)
-			{
-				thread_impl *ti = current;
-				current = NULL;
-
-				//delete ti;
-			}
+				current->release();
 		}
 
 		static LONG CALLBACK vectored_handler(EXCEPTION_POINTERS *_ex)
@@ -154,15 +151,16 @@ namespace netlib
 		int ret = 0;
 
 		thread_impl::setup();
-		//try
-		//{
+		ths->release(); // acquire in create
+		try
+		{
 			ths->function(ths->argument);
-		/*}
+		}
 		catch(std::exception const& _e)
 		{
 			std::cerr << "Exception occurred in thread "
 				<< ths << ": " << _e.what() << std::endl;
-		}*/
+		}
 		thread_impl::cleanup();
 
 		return (DWORD)ret;
@@ -176,6 +174,7 @@ namespace netlib
 			return NULL;
 
 		ret->handle = hThread;
+		ret->acquire();
 		return ret;
 	}
 

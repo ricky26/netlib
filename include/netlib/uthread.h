@@ -136,8 +136,8 @@ namespace netlib
 		void create_worker_threads(int _icnt);
 
 	protected:
-		virtual void schedule(uthread* _h);
-		virtual void unschedule(uthread* _h);
+		virtual void schedule(uthread::handle_t _h);
+		virtual void unschedule(uthread::handle_t _h);
 		virtual bool swap();
 
 	private:

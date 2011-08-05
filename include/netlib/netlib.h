@@ -7,9 +7,11 @@
 #		define NETLIB_API __declspec(dllimport)
 #	endif
 #	define NETLIB_INLINE __forceinline
+#	define NETLIB_ATOMIC NETLIB_API NETLIB_INLINE 
+#	define NETLIB_FASTCALL __fastcall
 
 	// Disable some stupid MSVC warnings
-#	pragma warning(disable:4251 4996)
+#	pragma warning(disable:4251 4996 4355)
 #else
 #	ifdef NETLIB_EXPORTS
 #		define NETLIB_API 
@@ -17,6 +19,8 @@
 #		define NETLIB_API 
 #	endif
 #	define NETLIB_INLINE inline
+#	define NETLIB_ATOMIC NETLIB_API
+#	define NETLIB_FASTCALL __msfastcall
 #endif
 
 #include <stdint.h>

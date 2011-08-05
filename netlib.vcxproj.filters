@@ -84,6 +84,9 @@
     <ClCompile Include="src\uthread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\atomic_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\netlib\socket.h">
@@ -156,6 +159,9 @@
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
     <ClInclude Include="include\netlib\event.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\netlib\atomic.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
   </ItemGroup>

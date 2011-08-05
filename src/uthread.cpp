@@ -21,9 +21,20 @@ namespace netlib
 		return --thr->mProtection;
 	}
 
+	static void uthread_start_0(uthread::void_fn_t _fn)
+	{
+		_fn();
+	}
+
+	uthread::handle_t uthread::create(void_fn_t _start)
+	{
+		return uthread::create(uthread_start_0, _start);
+	}
+
 	bool uthread::schedule()
 	{
-		netlib::scheduler *sch = current()->scheduler();
+		uthread *cur = current().get();
+		netlib::scheduler *sch = cur->scheduler();
 		return sch->swap();
 	}
 
@@ -34,7 +45,8 @@ namespace netlib
 
 	void uthread::suspend()
 	{
-		handle_t thr = current();
+		// If we hold a handle over uthread::exit, we won't ever deallocated it! harhar!
+		uthread *thr = current().get();
 		thr->mSuspended = true;
 		if(!schedule())
 		{
@@ -67,7 +79,7 @@ namespace netlib
 	{
 	}
 
-	void scheduler::schedule(uthread *_thr)
+	void scheduler::schedule(uthread::handle_t _thr)
 	{
 		netlib::scheduler *old = _thr->scheduler();
 		if(old != this)
@@ -76,7 +88,6 @@ namespace netlib
 				old->unschedule(_thr);
 
 			_thr->mScheduler = this;
-			_thr->mPosition = mScheduled.end();
 		}
 		else if(_thr->mPosition != mScheduled.end())
 			return;
@@ -89,7 +100,7 @@ namespace netlib
 		mLock.unlock();
 	}
 
-	void scheduler::unschedule(uthread *_thr)
+	void scheduler::unschedule(uthread::handle_t _thr)
 	{
 		if(_thr->scheduler() != this
 			|| _thr->mPosition == mScheduled.end())

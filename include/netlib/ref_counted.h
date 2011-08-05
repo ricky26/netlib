@@ -1,4 +1,5 @@
 #include "netlib.h"
+#include "atomic.h"
 
 #pragma once
 
@@ -12,15 +13,15 @@ namespace netlib
 		virtual ~ref_counted();
 		virtual void destroy();
 
-		inline ref_count_t acquire() { return mRefCount++; }
+		inline ref_count_t acquire() { return atomic::increment(&mRefCount); }
 		inline ref_count_t release()
 		{
 			if(mRefCount <= 0)
 				return 0;
 			
-			ref_count_t ret = mRefCount--;
+			ref_count_t ret = atomic::decrement(&mRefCount);
 
-			if(mRefCount == 0)
+			if(ret == 0)
 				destroy();
 
 			return ret;
@@ -107,6 +108,12 @@ namespace netlib
 		inline bool operator !=(handle_t const& _other)
 		{
 			return ptr != _other.ptr;
+		}
+
+		inline handle_t &operator =(handle_t const& _other)
+		{
+			reset(_other.ptr);
+			return *this;
 		}
 
 		inline ptr_t operator ->() const

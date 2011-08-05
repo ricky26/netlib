@@ -82,6 +82,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\atomic_win32.cpp" />
     <ClCompile Include="src\base64_win32.cpp" />
     <ClCompile Include="src\bitstream.cpp" />
     <ClCompile Include="src\crypto.cpp" />
@@ -106,6 +107,7 @@
     <ClCompile Include="src\websocket.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\netlib\atomic.h" />
     <ClInclude Include="include\netlib\base64.h" />
     <ClInclude Include="include\netlib\bitstream.h" />
     <ClInclude Include="include\netlib\crypto.h" />

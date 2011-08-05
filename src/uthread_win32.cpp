@@ -45,7 +45,7 @@ namespace netlib
 		uthread_impl(uthread_start_t _start, void *_param)
 		{
 			acquire();
-			
+
 			mScheduler = NULL;
 			mProtection = 0;
 			mThread = NULL;
@@ -86,8 +86,10 @@ namespace netlib
 	
 	void uthread::destroy()
 	{
+		acquire(); // Make sure it's not destroyed again.
+
 		uthread_impl *ui = static_cast<uthread_impl*>(this);
-		ui->scheduler()->unschedule(this);
+		mScheduler->unschedule(this);
 		delete ui;
 	}
 
@@ -100,14 +102,12 @@ namespace netlib
 	void uthread_impl::after_swap()
 	{
 		if(swapped_from->dead())
-			swapped_from->release();
-		else
 		{
-			if(!swapped_from->suspended())
-				swapped_from->scheduler()->schedule(swapped_from);
-
-			InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
+			swapped_from->scheduler()->unschedule(swapped_from);
+			swapped_from->release();
 		}
+		else
+			InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
 
 		if(swapped_to->exception)
 		{
@@ -125,7 +125,6 @@ namespace netlib
 		if(_other == ::netlib::current())
 			return true;
 
-
 		swapped_from = ::netlib::current();
 		swapped_to = (uthread_impl*)_other;
 
@@ -140,6 +139,9 @@ namespace netlib
 			swapped_to->mSuspended = false;
 
 		swapped_to->scheduler()->unschedule(swapped_to);
+		if(!swapped_from->suspended())
+			swapped_from->scheduler()->schedule(swapped_from);
+
 		swapped_to->swapped_with = swapped_from;
 		SwitchToFiber(swapped_to->fiber);
 		uthread_impl::after_swap();
@@ -161,7 +163,7 @@ namespace netlib
 				<< impl << ": " << _e.what() << std::endl;
 
 			if(impl->protection() <= 0 && IsDebuggerPresent())
-				throw _e;
+				throw;
 		}
 
 		uthread::exit();
@@ -179,16 +181,6 @@ namespace netlib
 		thr->fiber = fib;
 		thr->schedule(cur->scheduler());
 		return thr;
-	}
-
-	static void uthread_start_0(uthread::void_fn_t _fn)
-	{
-		_fn();
-	}
-
-	uthread::handle_t uthread::create(void_fn_t _start)
-	{
-		return uthread::create(uthread_start_0, _start);
 	}
 
 	static LONG CALLBACK uthread_exception_redirector(EXCEPTION_POINTERS *_ex)

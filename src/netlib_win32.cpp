@@ -5,7 +5,6 @@
 #include "netlib/pipe.h"
 #include "netlib/file.h"
 #include "netlib_win32.h"
-#include <iostream> // asas
 
 namespace netlib
 {	
@@ -82,42 +81,45 @@ namespace netlib
 		ULONG_PTR key;
 		iocp_async_state *state = NULL;
 
-		while(true)
+		do
 		{
-			if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
-				(OVERLAPPED**)&state, 0) == TRUE)
+			while(true)
 			{
-				state->error = 0;
-				state->amount = numDone;
+				if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
+					(OVERLAPPED**)&state, 0) == TRUE)
+				{
+					state->error = 0;
+					state->amount = numDone;
 
-				if(state->handler)
-					state->handler(state);
-				else
-					state->thread->resume();
-			}
-			else if(state)
-			{
-				state->error = GetLastError();
-				state->amount = 0;
+					if(state->handler)
+						state->handler(state);
+					else
+						state->thread->resume();
+				}
+				else if(state)
+				{
+					state->error = GetLastError();
+					state->amount = 0;
 
-				if(state->handler)
-					state->handler(state);
+					if(state->handler)
+						state->handler(state);
+					else
+						state->thread->resume();
+				}
 				else
-					state->thread->resume();
+					break;
 			}
-			else
-				break;
+
+			SleepEx(0, TRUE); // TODO: Find a better value for this?
 		}
+		while(!uthread::schedule());
 
-		SleepEx(0, TRUE);
 		return true;
 	}
 
 	NETLIB_API int run_main_loop()
 	{
-		while(think())
-			uthread::schedule();
-
+		while(think());
 		return exit_value();
 	}
 }
