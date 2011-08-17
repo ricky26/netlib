@@ -37,7 +37,7 @@ namespace netlib
 		};
 
 		file();
-		file(file&);
+		file(file const&);
 		file(std::string const& _path, int _mode=mode_open|mode_read);
 		virtual ~file();
 

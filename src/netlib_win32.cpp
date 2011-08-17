@@ -65,10 +65,49 @@ namespace netlib
 		return gRetVal;
 	}
 
+	NETLIB_API bool running()
+	{
+		return !gIsDone;
+	}
+
 	NETLIB_API bool think()
 	{
 		if(gIsDone)
 			return false;
+
+		DWORD numDone = 0;
+		ULONG_PTR key;
+		iocp_async_state *state = NULL;
+
+		while(true)
+		{
+			if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
+				(OVERLAPPED**)&state, 0) == TRUE)
+			{
+				state->error = 0;
+				state->amount = numDone;
+
+				if(state->handler)
+					state->handler(state);
+				else
+					state->thread->resume();
+			}
+			else if(state)
+			{
+				state->error = GetLastError();
+				state->amount = 0;
+
+				if(state->handler)
+					state->handler(state);
+				else
+					state->thread->resume();
+			}
+			else
+				break;
+		}
+
+		if(!uthread::schedule())
+			SleepEx(1, TRUE); // TODO: Find a better value for this?
 
 		MSG msg;
 		while(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
@@ -76,43 +115,6 @@ namespace netlib
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-
-		DWORD numDone = 0;
-		ULONG_PTR key;
-		iocp_async_state *state = NULL;
-
-		do
-		{
-			while(true)
-			{
-				if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
-					(OVERLAPPED**)&state, 0) == TRUE)
-				{
-					state->error = 0;
-					state->amount = numDone;
-
-					if(state->handler)
-						state->handler(state);
-					else
-						state->thread->resume();
-				}
-				else if(state)
-				{
-					state->error = GetLastError();
-					state->amount = 0;
-
-					if(state->handler)
-						state->handler(state);
-					else
-						state->thread->resume();
-				}
-				else
-					break;
-			}
-
-			SleepEx(0, TRUE); // TODO: Find a better value for this?
-		}
-		while(!uthread::schedule());
 
 		return true;
 	}

@@ -9,14 +9,16 @@ namespace netlib
 	class NETLIB_API event
 	{
 	public:
-		event();
+		event(void *_sender=NULL);
 		virtual ~event();
 
 		void accept();
+		NETLIB_INLINE void *sender() const { return mSender; }
 
 		NETLIB_INLINE bool accepted() const { return mAccepted; }
 
 	private:
+		void *mSender;
 		bool mAccepted;
 	};
 
@@ -59,6 +61,8 @@ namespace netlib
 		void remove_handler(event_handler *_h);
 
 		void notify(event *_evt);
+		
+		NETLIB_INLINE void operator ()(event *_evt) { return notify(_evt); }
 		
 		NETLIB_INLINE void operator +=(event_handler *_fn) { add_handler(_fn); }
 		NETLIB_INLINE void operator -=(event_handler *_fn) { remove_handler(_fn); }

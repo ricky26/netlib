@@ -30,8 +30,13 @@ namespace netlib
 		typedef void (*void_fn_t)();
 
 		static handle_t current();
-		static handle_t create(void_fn_t _start);
 		static handle_t create(uthread_start_t _start, void *_param);
+
+		static inline handle_t create(thread_wrapper0::fn_t _fn)
+		{
+			void *ptr = new thread_wrapper0(_fn);
+			return create(thread_wrapper0::run, ptr);
+		}
 
 		template<typename T1>
 		static handle_t create(typename thread_wrapper1<T1>::fn_t _fn, T1 _1)
@@ -66,7 +71,6 @@ namespace netlib
 		}
 		
 		static bool swap(uthread *_other);
-		static inline bool swap(handle_t _h) { return swap(_h.get()); }
 		
 		void resume();
 

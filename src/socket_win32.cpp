@@ -1,4 +1,5 @@
 #include "netlib/socket.h"
+#include "netlib/ref_counted.h"
 #include <stdint.h>
 #include <iostream>
 #include <WinSock2.h>
@@ -11,130 +12,154 @@ namespace netlib
 	static LPFN_ACCEPTEX AcceptEx = NULL;
 
 	//
-	// socket_state_t
+	// socket_internal
 	//
-
-	enum socket_state_t
+	struct socket_internal: public ref_counted
 	{
-		socket_idle,
-		socket_recv,
-		socket_send,
-		socket_connect,
-	};
+		SOCKET handle;
 
-	//
-	// Helper functions
-	//
+		socket_internal(SOCKET _sock=INVALID_SOCKET)
+			: handle(_sock)
+		{
+			acquire();
+
+			if(handle != INVALID_SOCKET)
+			{
+				if(CreateIoCompletionPort((HANDLE)handle,
+					gCompletionPort, 0, 0) != gCompletionPort)
+				{
+					closesocket(handle);
+					handle = INVALID_SOCKET;
+				}
+			}
+		}
+
+		~socket_internal()
+		{
+			if(handle != INVALID_SOCKET)
+				closesocket(handle);
+		}
 	
-	static bool getSocketParams(address_family _af, socket_type _sock, socket_protocol _prot,
-		int &_oaf, int &_otype, int &_oprot)
-	{
-		switch(_af)
+		static bool socket_params(address_family _af, socket_type _sock, socket_protocol _prot,
+			int &_oaf, int &_otype, int &_oprot)
 		{
-		case af_inet:
-			_oaf = AF_INET;
-			break;
+			switch(_af)
+			{
+			case af_inet:
+				_oaf = AF_INET;
+				break;
 
-		default:
-			return false;
-		};
+			default:
+				return false;
+			};
 
-		switch(_sock)
+			switch(_sock)
+			{
+			case sock_stream:
+				_otype = SOCK_STREAM;
+				break;
+
+			default:
+				return false;
+			};
+
+			switch(_prot)
+			{
+			case prot_any:
+				_oprot = 0;
+				break;
+
+			default:
+				return false;
+			};
+
+			return true;
+		}
+
+		static inline socket_internal *get(void *_ptr)
 		{
-		case sock_stream:
-			_otype = SOCK_STREAM;
-			break;
-
-		default:
-			return false;
-		};
-
-		switch(_prot)
-		{
-		case prot_any:
-			_oprot = 0;
-			break;
-
-		default:
-			return false;
-		};
-
-		return true;
-	}
+			return static_cast<socket_internal*>(_ptr);
+		}
+	};
 
 	//
 	// socket
 	//
+
+	socket::socket()
+	{
+		mInternal = new socket_internal();
+	}
 	
 	socket::socket(address_family _af, socket_type _sock, socket_protocol _prot)
 	{		
-		int af, type, prot;
-		if(!getSocketParams(_af, _sock, _prot, af, type, prot))
-			mInternal = (void*)INVALID_SOCKET;
-		else
-			mInternal = (void*)WSASocket(af, type, prot, NULL, 0, WSA_FLAG_OVERLAPPED);
+		mInternal = new socket_internal();
+		create(_af, _sock, _prot);
 	}
 
 	socket::socket(int _sock)
 	{
-		mInternal = (void*)_sock;
-
-		if(_sock != INVALID_SOCKET)
-		{
-			if(CreateIoCompletionPort((HANDLE)_sock,
-				gCompletionPort, 0, 0) != gCompletionPort)
-			{
-				closesocket((SOCKET)_sock);
-				mInternal = (void*)INVALID_SOCKET;
-			}
-		}
+		mInternal = new socket_internal((SOCKET)_sock);
 	}
 	
-	socket::socket(socket_constructor_t const& _con)
+	socket::socket(socket const& _sock)
 	{
-		mInternal = _con.value;
-	}
-	
-	socket::socket(socket &_other)
-	{
-		mInternal = _other.mInternal;
-		_other.mInternal = (void*)INVALID_SOCKET;
+		socket_internal *si = socket_internal::get(_sock.mInternal);
+		si->acquire();
+		mInternal = si;
 	}
 
 	socket::~socket()
 	{
-		if(mInternal != (void*)INVALID_SOCKET)
-			closesocket((SOCKET)mInternal);
+		if(socket_internal *si = socket_internal::get(mInternal))
+			si->release();
+	}
+
+	bool socket::create(address_family _af, socket_type _sock,
+			socket_protocol _prot)
+	{
+		if(valid())
+			return false;
+
+		socket_internal *si = socket_internal::get(mInternal);
+		
+		int af, type, prot;
+		SOCKET sock;
+		if(!socket_internal::socket_params(_af, _sock, _prot, af, type, prot))
+			sock = INVALID_SOCKET;
+		else
+			sock = WSASocket(af, type, prot, NULL, 0, WSA_FLAG_OVERLAPPED);
+
+		si->handle = sock;
+		return true;
 	}
 	
 	bool socket::valid() const
 	{
-		return mInternal != (void*)INVALID_SOCKET;
+		return mInternal
+			&& socket_internal::get(mInternal)->handle != INVALID_SOCKET;
 	}
 	
 	int socket::handle() const
 	{
-		return (int)mInternal;
+		socket_internal *si = socket_internal::get(mInternal);
+		return (int)si->handle;
 	}
 	
 	int socket::release()
 	{
-		int ret = (int)mInternal;
-		mInternal = (void*)INVALID_SOCKET;
-		return ret;
-	}
-	
-	socket_constructor_t socket::returnable_value()
-	{
-		void *ret = mInternal;
-		mInternal = (void*)INVALID_SOCKET;
+		socket_internal *si = socket_internal::get(mInternal);
+		int ret = (int)si->handle;
+		si->handle = INVALID_SOCKET;
 		return ret;
 	}
 	
 	bool socket::connect(std::string const& _host, int _port)
 	{
-		if(mInternal == (void*)INVALID_SOCKET)
+		if(!valid())
 			return false;
+
+		socket_internal *si = socket_internal::get(mInternal);
 
 		hostent *he = gethostbyname(_host.c_str());
 		if(!he)
@@ -147,7 +172,7 @@ namespace netlib
 			GUID gufn = WSAID_CONNECTEX;
 			DWORD dwBytes;
 
-			if(WSAIoctl((SOCKET)mInternal,
+			if(WSAIoctl(si->handle,
 				SIO_GET_EXTENSION_FUNCTION_POINTER,
 				&gufn, sizeof(gufn), &ConnectEx, sizeof(ConnectEx),
 				&dwBytes, NULL, NULL) == SOCKET_ERROR)
@@ -162,13 +187,8 @@ namespace netlib
 		src_addr.sin_addr.s_addr = INADDR_ANY;
 		src_addr.sin_port = htons(0);
 
-		if(bind((SOCKET)mInternal,
+		if(bind(si->handle,
 			(sockaddr*)&src_addr, sizeof(src_addr)) != 0)
-			return false;
-
-		// Bind to Completion Port
-		if(CreateIoCompletionPort((HANDLE)mInternal,
-			gCompletionPort, 0, 0) != gCompletionPort)
 			return false;
 		
 		// Connect
@@ -183,7 +203,7 @@ namespace netlib
 		memcpy((char*)he->h_addr, (char*)&addr.sin_addr.s_addr, he->h_length);
 		addr.sin_port = htons(_port);
 
-		if(ConnectEx((SOCKET)mInternal, (sockaddr*)&addr,
+		if(ConnectEx(si->handle, (sockaddr*)&addr,
 			sizeof(addr), NULL, 0, NULL,
 			&state.overlapped) == FALSE)
 		{
@@ -205,8 +225,10 @@ namespace netlib
 
 	bool socket::listen(int _port, int _amt)
 	{
-		if(mInternal == (void*)INVALID_SOCKET)
+		if(!valid())
 			return false;
+
+		socket_internal *si = socket_internal::get(mInternal);
 
 		sockaddr_in addr;
 		memset(&addr, 0, sizeof(addr));
@@ -214,18 +236,13 @@ namespace netlib
 		addr.sin_addr.s_addr = INADDR_ANY;
 		addr.sin_port = htons(_port);
 
-		if(::bind((SOCKET)mInternal, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
+		if(::bind(si->handle, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
 		{
 			std::cerr << "Bind failed: " << WSAGetLastError() << std::endl;
 			return false;
 		}
 
-		// Bind to Completion Port
-		if(CreateIoCompletionPort((HANDLE)mInternal,
-			gCompletionPort, 0, 0) != gCompletionPort)
-			return false;
-
-		if(::listen((SOCKET)mInternal, _amt) == SOCKET_ERROR)
+		if(::listen(si->handle, _amt) == SOCKET_ERROR)
 			return false;
 
 		if(!AcceptEx)
@@ -233,7 +250,7 @@ namespace netlib
 			GUID gufn = WSAID_ACCEPTEX;
 			DWORD dwBytes;
 
-			if(WSAIoctl((SOCKET)mInternal,
+			if(WSAIoctl(si->handle,
 				SIO_GET_EXTENSION_FUNCTION_POINTER,
 				&gufn, sizeof(gufn), &AcceptEx, sizeof(AcceptEx),
 				&dwBytes, NULL, NULL) == SOCKET_ERROR)
@@ -243,8 +260,13 @@ namespace netlib
 		return true;
 	}
 
-	socket_constructor_t socket::accept()
+	socket socket::accept()
 	{
+		if(!valid())
+			return socket();
+
+		socket_internal *si = socket_internal::get(mInternal);
+
 		socket ret;
 
 		iocp_async_state state;
@@ -252,7 +274,7 @@ namespace netlib
 		
 		char buf[sizeof(sockaddr_in)*2 + 32];
 		
-		if(AcceptEx((SOCKET)mInternal, (SOCKET)ret.handle(), buf,
+		if(AcceptEx(si->handle, (SOCKET)ret.handle(), buf,
 			sizeof(buf) - ((sizeof(sockaddr_in) + 16) * 2),
 			sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
 			&state.amount, &state.overlapped) == FALSE)
@@ -266,11 +288,13 @@ namespace netlib
 			}
 		}
 
-		return (void*)ret.release();
+		return ret;
 	}
 
 	void socket::close()
 	{
+		socket_internal *si = socket_internal::get(mInternal);
+
 		if(mInternal != (void*)INVALID_SOCKET)
 		{
 			CloseHandle((HANDLE)mInternal);
@@ -280,6 +304,8 @@ namespace netlib
 
 	size_t socket::read(void *_buffer, size_t _amt)
 	{
+
+		socket_internal *si = socket_internal::get(mInternal);
 		if(mInternal != (void*)INVALID_SOCKET)
 		{
 			iocp_async_state state;
@@ -308,6 +334,8 @@ namespace netlib
 
 	size_t socket::write(const void *_buffer, size_t _amt)
 	{
+
+		socket_internal *si = socket_internal::get(mInternal);
 		if(mInternal != (void*)INVALID_SOCKET)
 		{
 			iocp_async_state state;

@@ -1,14 +1,34 @@
 #include "netlib.h"
+#include <functional>
 
 #pragma once
 
 namespace netlib
 {
+	struct thread_wrapper0
+	{
+		typedef thread_wrapper0 self_t;
+		typedef std::function<void()> fn_t;
+
+		fn_t fn;
+
+		inline thread_wrapper0(fn_t _fn): fn(_fn)
+		{
+		}
+
+		static inline void run(void *_p)
+		{
+			self_t *self = static_cast<self_t*>(_p);
+			self->fn();
+			delete self;
+		}
+	};
+
 	template<typename T1>
 	struct thread_wrapper1
 	{
 		typedef thread_wrapper1<T1> self_t;
-		typedef void (*fn_t)(T1);
+		typedef std::function<void(T1)> fn_t;
 
 		fn_t fn;
 		T1 a1;
@@ -29,7 +49,7 @@ namespace netlib
 	struct thread_wrapper2
 	{
 		typedef thread_wrapper2<T1, T2> self_t;
-		typedef void (*fn_t)(T1, T2);
+		typedef std::function<void(T1, T2)> fn_t;
 
 		fn_t fn;
 		T1 a1;
@@ -52,7 +72,7 @@ namespace netlib
 	struct thread_wrapper3
 	{
 		typedef thread_wrapper3<T1, T2, T3> self_t;
-		typedef void (*fn_t)(T1, T2, T3);
+		typedef std::function<void(T1, T2, T3)> fn_t;
 
 		fn_t fn;
 		T1 a1;
@@ -76,7 +96,7 @@ namespace netlib
 	struct thread_wrapper4
 	{
 		typedef thread_wrapper4<T1, T2, T3, T4> self_t;
-		typedef void (*fn_t)(T1, T2, T3, T4);
+		typedef std::function<void(T1, T2, T3, T4)> fn_t;
 
 		fn_t fn;
 		T1 a1;

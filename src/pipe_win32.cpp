@@ -1,5 +1,6 @@
 #include "netlib/pipe.h"
 #include "netlib/socket.h"
+#include "netlib/ref_counted.h"
 #include "netlib_win32.h"
 #include <iostream>
 
@@ -13,7 +14,7 @@ namespace netlib
 	// pipe_internal
 	//
 
-	struct pipe_internal
+	struct pipe_internal: public ref_counted
 	{
 		HANDLE handle;
 		std::string name;
@@ -21,6 +22,15 @@ namespace netlib
 		pipe_internal(HANDLE _hdl=INVALID_HANDLE_VALUE)
 		{
 			handle = _hdl;
+			acquire();
+		}
+
+		~pipe_internal()
+		{
+			if(handle != INVALID_HANDLE_VALUE)
+			{
+				CloseHandle(handle);
+			}
 		}
 
 		static inline pipe_internal *get(void *_ptr)
@@ -43,32 +53,17 @@ namespace netlib
 		mInternal = new pipe_internal((HANDLE)_handle);
 	}
 
-	pipe::pipe(pipe &_p)
+	pipe::pipe(pipe const& _p)
 	{
-		mInternal = _p.mInternal;
-		_p.mInternal = new pipe_internal();
-		
-		if(mInternal)
-		{
-			pipe_internal::get(_p.mInternal)->name
-				= pipe_internal::get(mInternal)->name;
-		}
-		else
-			mInternal = new pipe_internal();
+		pipe_internal *pi = pipe_internal::get(_p.mInternal);
+		pi->acquire();
+		mInternal = pi;
 	}
 
 	pipe::~pipe()
 	{
-		if(mInternal)
-		{
-			pipe_internal *pi = pipe_internal::get(mInternal);
-			mInternal = NULL;
-
-			if(pi->handle != INVALID_HANDLE_VALUE)
-				CloseHandle(pi->handle);
-
-			delete pi;
-		}
+		if(pipe_internal *pi = pipe_internal::get(mInternal))
+			pi->release();
 	}
 
 	bool pipe::valid() const
@@ -94,13 +89,6 @@ namespace netlib
 		int hdl = (int)pi->handle;
 		pi->handle = INVALID_HANDLE_VALUE;
 		return hdl;
-	}
-	
-	pipe_constructor_t pipe::returnable_value()
-	{
-		pipe_internal *pi = pipe_internal::get(mInternal);
-		mInternal = new pipe_internal();
-		return pi;
 	}
 		
 	bool pipe::open(std::string const& _pipe)
@@ -150,11 +138,11 @@ namespace netlib
 		return true;
 	}
 
-	pipe_constructor_t pipe::accept()
+	pipe pipe::accept()
 	{
 		pipe_internal *pi = pipe_internal::get(mInternal);
 		if(pi && pi->name.empty())
-			return NULL;
+			return pipe();
 
 		HANDLE hPipe = pi->handle;
 		pi->handle = INVALID_HANDLE_VALUE;
@@ -211,9 +199,10 @@ namespace netlib
 			}
 		}
 		
-		pipe_internal *ri = new pipe_internal(hPipe);
-		ri->name = pi->name;
-		return ri;
+		pipe ret((int)hPipe);
+		pipe_internal *rpi = pipe_internal::get(ret.mInternal);
+		rpi->name = pi->name;
+		return ret;
 	}
 
 	void pipe::close()
@@ -278,14 +267,14 @@ namespace netlib
 		return state.amount;
 	}
 		
-	socket_constructor_t pipe::read()
+	socket pipe::read()
 	{
 		HANDLE handle;
 
 		if(!read_block(&handle, sizeof(handle)))
-			return (void*)INVALID_SOCKET;
+			return socket();
 
-		return socket((int)handle).returnable_value();
+		return socket((int)handle);
 	}
 
 	bool pipe::write(socket &_sock)

@@ -6,8 +6,8 @@ namespace netlib
 	// event
 	//
 
-	event::event()
-		: mAccepted(false)
+	event::event(void *_sender)
+		: mAccepted(false), mSender(_sender)
 	{
 	}
 

@@ -1,4 +1,5 @@
 #include "netlib/file.h"
+#include "netlib/ref_counted.h"
 #include "netlib_win32.h"
 #include <iostream>
 
@@ -9,7 +10,7 @@ namespace netlib
 	// file_internal
 	//
 
-	struct file_internal
+	struct file_internal: public ref_counted
 	{
 		HANDLE handle;
 		LARGE_INTEGER position;
@@ -18,6 +19,14 @@ namespace netlib
 		{
 			handle = _hdl;
 			position.QuadPart = 0;
+
+			acquire();
+		}
+
+		~file_internal()
+		{
+			if(handle != INVALID_HANDLE_VALUE)
+				CloseHandle(handle);
 		}
 
 		static inline file_internal *get(void *_ptr)
@@ -35,10 +44,11 @@ namespace netlib
 		mInternal = new file_internal();
 	}
 
-	file::file(file &_f)
+	file::file(file const& _f)
 	{
-		mInternal = _f.mInternal;
-		_f.mInternal = new file_internal();
+		file_internal *fi = file_internal::get(_f.mInternal);
+		fi->acquire();
+		mInternal = fi;
 	}
 
 	file::file(std::string const& _path, int _mode)
@@ -49,16 +59,8 @@ namespace netlib
 
 	file::~file()
 	{
-		if(valid())
-		{
-			file_internal *fi = file_internal::get(mInternal);
-			mInternal = NULL;
-
-			if(fi->handle != INVALID_HANDLE_VALUE)
-				CloseHandle(fi->handle);
-
-			delete fi;
-		}
+		if(file_internal *fi = file_internal::get(mInternal))
+			fi->release();
 	}
 
 	bool file::valid() const

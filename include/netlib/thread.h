@@ -19,15 +19,20 @@ namespace netlib
 
 		bool join();
 		static void exit();
+		static void sleep(int _ms);
 
 		int protection() const;
 		static int protect();
 		static int unprotect();
 		
 		static handle_t current();
-
 		static handle_t create(thread_fn_t _fn, void *_arg);
-		static handle_t create(void_fn_t _fn);
+
+		static inline handle_t create(thread_wrapper0::fn_t _fn)
+		{
+			void *ptr = new thread_wrapper0(_fn);
+			return create(thread_wrapper0::run, ptr);
+		}
 
 		template<typename T1>
 		static inline handle_t create(typename thread_wrapper1<T1>::fn_t _fn, T1 _1)

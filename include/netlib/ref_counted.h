@@ -11,7 +11,6 @@ namespace netlib
 		typedef uint32_t ref_count_t;
 
 		virtual ~ref_counted();
-		virtual void destroy();
 
 		inline ref_count_t acquire() { return atomic::increment(&mRefCount); }
 		inline ref_count_t release()
@@ -30,6 +29,8 @@ namespace netlib
 		inline ref_count_t ref_count() { return mRefCount; }
 
 	protected:
+		virtual void destroy();
+
 		ref_counted();
 		ref_count_t mRefCount;
 	};
@@ -56,6 +57,14 @@ namespace netlib
 		inline handle(handle_t const& _h)
 		{
 			ptr = _h.ptr;
+			if(ptr)
+				ptr->acquire();
+		}
+
+		template<typename T>
+		inline handle(handle<T> const& _h)
+		{
+			ptr = _h.get();
 			if(ptr)
 				ptr->acquire();
 		}
@@ -95,17 +104,23 @@ namespace netlib
 			reset(NULL);
 		}
 
-		inline operator bool()
+		template<typename T>
+		handle<T> cast() const
+		{
+			return handle<T>(dynamic_cast<T*>(ptr));
+		}
+
+		inline operator bool() const
 		{
 			return ptr != NULL;
 		}
 
-		inline bool operator ==(handle_t const& _other)
+		inline bool operator ==(handle_t const& _other) const
 		{
 			return ptr == _other.ptr;
 		}
 
-		inline bool operator !=(handle_t const& _other)
+		inline bool operator !=(handle_t const& _other) const
 		{
 			return ptr != _other.ptr;
 		}

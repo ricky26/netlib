@@ -5,44 +5,28 @@
 
 namespace netlib
 {
-	class socket_constructor_t;
-	class pipe_constructor_t
-	{
-		friend class pipe;
-
-		pipe_constructor_t(void *_val)
-			: value(_val)
-		{
-		}
-
-		void *value;
-	};
-
 	class socket;
 	class NETLIB_API pipe: public bitstream
 	{
 	public:
 		pipe();
-		pipe(pipe_constructor_t const& _con);
+		pipe(pipe const&);
 		explicit pipe(int _handle);
-		pipe(pipe &);
 		virtual ~pipe();
 
 		bool valid() const;
 		int handle() const;
 		int release();
-
-		pipe_constructor_t returnable_value();
 		
 		bool open(std::string const& _pipe);
 		bool create(std::string const& _pipe);
-		pipe_constructor_t accept();
+		pipe accept();
 		void close();
 
 		virtual size_t read(void *_buffer, size_t _amt) override;
 		virtual size_t write(const void *_buffer, size_t _amt) override;
 
-		virtual socket_constructor_t read();
+		virtual socket read();
 		virtual bool write(socket&);
 
 		static bool init();

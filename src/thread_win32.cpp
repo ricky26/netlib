@@ -116,6 +116,11 @@ namespace netlib
 		return ret == WAIT_OBJECT_0;
 	}
 
+	void thread::sleep(int _ms)
+	{
+		Sleep(_ms);
+	}
+
 	int thread::protection() const
 	{
 		return ((thread_impl*)this)->protection;
@@ -178,16 +183,6 @@ namespace netlib
 		return ret;
 	}
 
-	static void create_void(void *_arg)
-	{
-		((thread::void_fn_t)_arg)();
-	}
-
-	thread::handle_t thread::create(void_fn_t _fn)
-	{
-		return create(create_void, _fn);
-	}
-
 	bool thread::init()
 	{
 		thread_impl::setup();
@@ -224,6 +219,7 @@ namespace netlib
 
 	critical_section::~critical_section()
 	{
+		DeleteCriticalSection((CRITICAL_SECTION*)mInternal);
 		delete (CRITICAL_SECTION*)mInternal;
 	}
 

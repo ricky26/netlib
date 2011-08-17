@@ -40,5 +40,6 @@ namespace netlib
 	NETLIB_API void exit(int _val=0);
 	NETLIB_API int exit_value();
 	NETLIB_API bool think();
+	NETLIB_API bool running();
 	NETLIB_API int run_main_loop();
 }

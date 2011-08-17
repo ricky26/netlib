@@ -101,6 +101,8 @@ namespace netlib
 	static __declspec(thread) uthread_impl *swapped_from, *swapped_to;
 	void uthread_impl::after_swap()
 	{
+		swapped_from->release();
+
 		if(swapped_from->dead())
 		{
 			swapped_from->scheduler()->unschedule(swapped_from);

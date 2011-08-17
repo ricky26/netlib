@@ -21,16 +21,6 @@ namespace netlib
 		return --thr->mProtection;
 	}
 
-	static void uthread_start_0(uthread::void_fn_t _fn)
-	{
-		_fn();
-	}
-
-	uthread::handle_t uthread::create(void_fn_t _start)
-	{
-		return uthread::create(uthread_start_0, _start);
-	}
-
 	bool uthread::schedule()
 	{
 		uthread *cur = current().get();
@@ -114,7 +104,7 @@ namespace netlib
 
 	bool scheduler::swap()
 	{
-		uthread::handle_t thr;
+		uthread *thr_p = NULL;
 		do
 		{
 			mLock.lock();
@@ -126,7 +116,7 @@ namespace netlib
 				return false;
 			}
 
-			thr = *it;
+			uthread::handle_t thr = *it;
 			while(thr->thread() && (thr->thread() != thread::current()))
 			{
 				// TODO: This could eat CPU, we should fix this! D;! -- Ricky26
@@ -141,8 +131,11 @@ namespace netlib
 			}
 		
 			mLock.unlock();
+
+			thr_p = thr.get();
+			thr_p->acquire();
 		}
-		while(!uthread::swap(thr));
+		while(!uthread::swap(thr_p));
 
 		return true;
 	}

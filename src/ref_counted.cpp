@@ -12,5 +12,6 @@ namespace netlib
 
 	void ref_counted::destroy()
 	{
+		delete this;
 	}
 }
