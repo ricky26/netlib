@@ -133,6 +133,7 @@
     <ClInclude Include="include\netlib\netlib.h" />
     <ClInclude Include="include\netlib\thread_wrapper.h" />
     <ClInclude Include="include\netlib\websocket.h" />
+    <ClInclude Include="include\netlib\win32.h" />
     <ClInclude Include="src\netlib_win32.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

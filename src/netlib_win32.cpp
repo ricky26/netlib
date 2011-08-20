@@ -4,13 +4,18 @@
 #include "netlib/socket.h"
 #include "netlib/pipe.h"
 #include "netlib/file.h"
+#include "netlib/win32.h"
 #include "netlib_win32.h"
+#include <unordered_map>
 
 namespace netlib
 {	
 	HANDLE gCompletionPort = NULL;
 	static bool gIsDone;
 	static int gRetVal;
+
+	typedef std::unordered_map<int, message_handler_t> msg_map_t;
+	static msg_map_t gMessageMap;
 
 	NETLIB_API bool init()
 	{
@@ -113,7 +118,14 @@ namespace netlib
 		while(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
 		{
 			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			if(!msg.hwnd)
+			{
+				auto it = gMessageMap.find(msg.message);
+				if(it != gMessageMap.end())
+					it->second(msg.message, msg.lParam, msg.wParam);
+			}
+			else
+				DispatchMessage(&msg);
 		}
 
 		return true;
@@ -123,5 +135,22 @@ namespace netlib
 	{
 		while(think());
 		return exit_value();
+	}
+	
+	NETLIB_API bool register_message_handler(int _msg, message_handler_t const& _hdlr)
+	{
+		auto it = gMessageMap.find(_msg);
+		if(it != gMessageMap.end())
+			return false;
+
+		gMessageMap.insert(msg_map_t::value_type(_msg, _hdlr));
+		return true;
+	}
+
+	NETLIB_API void remove_message_handler(int _msg)
+	{
+		auto it = gMessageMap.find(_msg);
+		if(it != gMessageMap.end())
+			gMessageMap.erase(it);
 	}
 }
