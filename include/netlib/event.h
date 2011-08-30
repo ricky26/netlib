@@ -10,64 +10,42 @@ namespace netlib
 	{
 	public:
 		event(void *_sender=NULL);
-		virtual ~event();
 
-		void accept();
 		NETLIB_INLINE void *sender() const { return mSender; }
-
-		NETLIB_INLINE bool accepted() const { return mAccepted; }
 
 	private:
 		void *mSender;
-		bool mAccepted;
 	};
 
-	class NETLIB_API event_handler
+	template<typename T=event>
+	class delegate
 	{
 	public:
-		event_handler();
-		virtual ~event_handler();
+		typedef std::function<bool (T const&)> handler_t;
+		typedef std::list<handler_t> list_t;
+		typedef typename list_t::iterator return_t;
 
-		virtual void handle(event *_evt) = 0;
-	};
+		NETLIB_INLINE void clear() { handlers.clear(); }
+		NETLIB_INLINE return_t add_handler(handler_t const& _h) { handlers.push_back(_h); return handlers.end()--; }
+		NETLIB_INLINE void remove_handler(return_t const& _r) { handlers.erase(_r); }
 
-	class NETLIB_API function_event_handler: public event_handler
-	{
-	public:
-		typedef std::function<void(event*)> fn_t;
+		NETLIB_INLINE bool notify(T const& _evt)
+		{
+			for(auto it = handlers.begin(); it != handlers.end(); it++)
+			{
+				if((*it)(_evt))
+					return true;
+			}
 
-		function_event_handler();
-		function_event_handler(fn_t const& _fn);
-
-		void set(fn_t const& _fn);
-		NETLIB_INLINE fn_t const& function() const { return mFunction; }
-
-		void handle(event *_evt) override;
+			return false;
+		}
+		
+		NETLIB_INLINE bool operator ()(T const& _evt) { return notify(_evt); }
+		
+		NETLIB_INLINE return_t operator +=(handler_t const& _h) { return add_handler(_h); }
+		NETLIB_INLINE void operator -=(return_t const& _h) { remove_handler(_h); }
 
 	private:
-		fn_t mFunction;
-	};
-
-	class NETLIB_API delegate
-	{
-	public:
-		typedef std::unordered_set<event_handler*> set_t;
-
-		delegate();
-		virtual ~delegate();
-
-		void clear();
-		void add_handler(event_handler *_h);
-		void remove_handler(event_handler *_h);
-
-		void notify(event *_evt);
-		
-		NETLIB_INLINE void operator ()(event *_evt) { return notify(_evt); }
-		
-		NETLIB_INLINE void operator +=(event_handler *_fn) { add_handler(_fn); }
-		NETLIB_INLINE void operator -=(event_handler *_fn) { remove_handler(_fn); }
-
-	private:
-		set_t mHandlers;
+		list_t handlers;
 	};
 }

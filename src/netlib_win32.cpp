@@ -17,6 +17,11 @@ namespace netlib
 	typedef std::unordered_map<int, message_handler_t> msg_map_t;
 	static msg_map_t gMessageMap;
 
+	void endPeriod()
+	{
+		timeEndPeriod(1);
+	}
+
 	NETLIB_API bool init()
 	{
 		gIsDone = false;
@@ -41,6 +46,8 @@ namespace netlib
 		if(!file::init())
 			return false;
 
+		timeBeginPeriod(1);
+		atexit(endPeriod);
 		return true;
 	}
 
@@ -112,7 +119,7 @@ namespace netlib
 		}
 
 		if(!uthread::schedule())
-			SleepEx(1, TRUE); // TODO: Find a better value for this?
+			SleepEx(0, TRUE); // TODO: Find a better value for this?
 
 		MSG msg;
 		while(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
@@ -152,5 +159,15 @@ namespace netlib
 		auto it = gMessageMap.find(_msg);
 		if(it != gMessageMap.end())
 			gMessageMap.erase(it);
+	}
+
+	NETLIB_API void be_nice()
+	{
+		SleepEx(0, TRUE);
+	}
+
+	NETLIB_API void sleep(int _ms)
+	{
+		Sleep(_ms);
 	}
 }
