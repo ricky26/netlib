@@ -315,13 +315,13 @@ namespace netlib
 	size_t socket::read(void *_buffer, size_t _amt)
 	{
 		socket_internal *si = socket_internal::get(mInternal);
-		if(mInternal != (void*)INVALID_SOCKET)
+		if(si->handle != INVALID_SOCKET)
 		{
 			iocp_async_state state;
 			state.thread = uthread::current();
 
 			int err;
-			if(ReadFile((HANDLE)mInternal, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(ReadFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
 				uthread::suspend();
@@ -345,13 +345,13 @@ namespace netlib
 	{
 
 		socket_internal *si = socket_internal::get(mInternal);
-		if(mInternal != (void*)INVALID_SOCKET)
+		if(si->handle != INVALID_SOCKET)
 		{
 			iocp_async_state state;
 			state.thread = uthread::current();
 
 			int err;
-			if(WriteFile((HANDLE)mInternal, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(WriteFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
 				uthread::suspend();
