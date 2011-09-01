@@ -101,6 +101,12 @@ namespace netlib
 	static __declspec(thread) uthread_impl *swapped_from, *swapped_to;
 	void uthread_impl::after_swap()
 	{
+		if(swapped_to->suspended())
+		{
+			swapped_to->mSuspended = false;
+			swapped_to->acquire();
+		}
+
 		swapped_from->release();
 
 		if(swapped_from->dead())
@@ -108,8 +114,8 @@ namespace netlib
 			swapped_from->scheduler()->unschedule(swapped_from);
 			swapped_from->release();
 		}
-		else
-			InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
+
+		InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
 
 		if(swapped_to->exception)
 		{
@@ -120,6 +126,9 @@ namespace netlib
 
 			_CxxThrowException(exc, ti);
 		}
+		
+		swapped_to->release();
+		swapped_from->release();
 	}
 		
 	bool uthread::swap(uthread *_other)
@@ -130,15 +139,15 @@ namespace netlib
 		swapped_from = ::netlib::current();
 		swapped_to = (uthread_impl*)_other;
 
+		swapped_from->acquire();
+		swapped_to->acquire();
+
 		if(swapped_to->dead())
 			throw std::exception("Can't swap to dead thread!");
 		
 		BOOL ok = InterlockedCompareExchangeAcquire((LONG*)&swapped_to->running, TRUE, FALSE);
 		if(ok != FALSE)
 			return false;
-
-		if(swapped_to->suspended())
-			swapped_to->mSuspended = false;
 
 		swapped_to->scheduler()->unschedule(swapped_to);
 		if(!swapped_from->suspended())

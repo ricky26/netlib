@@ -35,7 +35,7 @@ namespace netlib
 
 	void uthread::suspend()
 	{
-		// If we hold a handle over uthread::exit, we won't ever deallocated it! harhar!
+		// If we hold a handle over uthread::exit, we won't ever deallocate it! harhar!
 		uthread *thr = current().get();
 		thr->mSuspended = true;
 		if(!schedule())
@@ -49,7 +49,7 @@ namespace netlib
 	{
 		if(suspended())
 		{
-			mSuspended = false;
+			scheduler()->schedule(this);
 
 			handle_t cur = current();
 			if(scheduler() == cur->scheduler())
