@@ -37,6 +37,8 @@ namespace netlib
 	}
 
 	NETLIB_API bool init();
+	NETLIB_API void shutdown();
+
 	NETLIB_API void exit(int _val=0);
 	NETLIB_API int exit_value();
 	NETLIB_API bool think();
@@ -45,4 +47,6 @@ namespace netlib
 
 	NETLIB_API void be_nice();
 	NETLIB_API void sleep(int _ms);
+
+	NETLIB_API uint64_t time();
 }

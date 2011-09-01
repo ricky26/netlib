@@ -90,6 +90,9 @@
     <ClCompile Include="src\module_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ticker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\netlib\socket.h">
@@ -180,6 +183,9 @@
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
     <ClInclude Include="include\netlib\owned_ptr.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\netlib\ticker.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
   </ItemGroup>

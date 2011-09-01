@@ -1,4 +1,5 @@
 #include "netlib/netlib.h"
+#include "netlib/ticker.h"
 #include "netlib/thread.h"
 #include "netlib/uthread.h"
 #include "netlib/socket.h"
@@ -10,12 +11,41 @@
 
 namespace netlib
 {	
+	static _declspec(thread) uint64_t gTimeBase = 0;
+	static _declspec(thread) uint64_t gCPUFreq = 0;
+	static _declspec(thread) uint64_t gTime = 0;
+	static handle<thread> gTimeThread; // TODO: swap for CPU handle
+
 	HANDLE gCompletionPort = NULL;
 	static bool gIsDone;
 	static int gRetVal;
 
 	typedef std::unordered_map<int, message_handler_t> msg_map_t;
 	static msg_map_t gMessageMap;
+	NETLIB_API void atexit(atexit_t const& _ae);
+
+	static inline void setup_time()
+	{
+		QueryPerformanceFrequency((LARGE_INTEGER*)&gCPUFreq);
+		QueryPerformanceCounter((LARGE_INTEGER*)&gTimeBase);
+		gTimeThread = thread::current();
+	}
+
+	static inline bool update_time()
+	{
+		if(gCPUFreq <= 0) return false;
+
+		uint64_t count = 0;
+		if(QueryPerformanceCounter((LARGE_INTEGER*)&count) != TRUE)
+			return false;
+
+		if(count < gTimeBase)
+			return false;
+
+		count -= gTimeBase;
+		gTime = (count * 1000000) / gCPUFreq;
+		return true;
+	}
 
 	void endPeriod()
 	{
@@ -48,7 +78,17 @@ namespace netlib
 
 		timeBeginPeriod(1);
 		atexit(endPeriod);
+		setup_time();
+
+		if(!execute_atstart())
+			return false;
+
 		return true;
+	}
+
+	NETLIB_API void shutdown()
+	{
+		execute_atexit();
 	}
 
 	NETLIB_API void exit(int _val)
@@ -133,6 +173,12 @@ namespace netlib
 			}
 			else
 				DispatchMessage(&msg);
+		}
+
+		if(thread::current() == gTimeThread)
+		{
+			if(!update_time())
+				return false;
 		}
 
 		return true;

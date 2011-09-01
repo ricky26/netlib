@@ -103,6 +103,7 @@
     <ClCompile Include="src\telnet.cpp" />
     <ClCompile Include="src\terminal.cpp" />
     <ClCompile Include="src\thread_win32.cpp" />
+    <ClCompile Include="src\ticker.cpp" />
     <ClCompile Include="src\uthread.cpp" />
     <ClCompile Include="src\uthread_win32.cpp" />
     <ClCompile Include="src\websocket.cpp" />
@@ -131,6 +132,7 @@
     <ClInclude Include="include\netlib\telnet.h" />
     <ClInclude Include="include\netlib\terminal.h" />
     <ClInclude Include="include\netlib\thread.h" />
+    <ClInclude Include="include\netlib\ticker.h" />
     <ClInclude Include="include\netlib\uthread.h" />
     <ClInclude Include="include\netlib\netlib.h" />
     <ClInclude Include="include\netlib\thread_wrapper.h" />
