@@ -130,7 +130,17 @@ namespace netlib
 		else
 			sock = WSASocket(af, type, prot, NULL, 0, WSA_FLAG_OVERLAPPED);
 
+		if(sock != INVALID_SOCKET)
+		{
+			if(CreateIoCompletionPort((HANDLE)sock,
+				gCompletionPort, 0, 0) != gCompletionPort)
+			{
+				closesocket(sock);
+				sock = INVALID_SOCKET;
+			}
+		}
 		si->handle = sock;
+
 		return true;
 	}
 	
