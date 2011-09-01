@@ -180,7 +180,16 @@ namespace netlib
 				break;
 
 			case ERROR_IO_PENDING:
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx(hPipe, &state.overlapped);
+					throw;
+				}
+
 				success = SUCCEEDED(state.error);
 
 				if(!success)
@@ -227,7 +236,15 @@ namespace netlib
 		if(ReadFile(pi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 			|| GetLastError() == ERROR_IO_PENDING)
 		{
-			uthread::suspend();
+			try
+			{
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx(pi->handle, &state.overlapped);
+				throw;
+			}
 
 			if(state.error != 0)
 				return 0;
@@ -253,7 +270,15 @@ namespace netlib
 		if(WriteFile(pi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 			|| GetLastError() == ERROR_IO_PENDING)
 		{
-			uthread::suspend();
+			try
+			{
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx(pi->handle, &state.overlapped);
+				throw;
+			}
 
 			if(state.error != 0)
 				return 0;

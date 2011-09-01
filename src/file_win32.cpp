@@ -144,7 +144,15 @@ namespace netlib
 			if(ReadFile(fi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| GetLastError() == ERROR_IO_PENDING)
 			{
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx(fi->handle, &state.overlapped);
+					throw;
+				}
 
 				fi->position.QuadPart += state.amount;
 				if(state.error != 0)
@@ -173,7 +181,15 @@ namespace netlib
 			if(WriteFile(fi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| GetLastError() == ERROR_IO_PENDING)
 			{
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx(fi->handle, &state.overlapped);
+					throw;
+				}
 
 				fi->position.QuadPart += state.amount;
 				if(state.error != 0)

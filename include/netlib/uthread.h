@@ -22,6 +22,7 @@ namespace netlib
 
 		typedef handle<uthread> handle_t;
 		typedef std::list<handle_t> list_t;
+		typedef std::function<void()> run_t;
 
 		virtual ~uthread();
 		virtual void destroy();
@@ -75,19 +76,9 @@ namespace netlib
 		void resume();
 
 		template<typename T>
-		inline void raise(T &_exc)
-		{
-			redirect_exceptions(this);
+		inline void raise(T &_exc) { run([_exc]() { throw _exc; }); }
 
-			try
-			{
-				throw _exc;
-			}
-			catch(...)
-			{}
-
-			redirect_exceptions(NULL);
-		}
+		void run(run_t const& _fn);
 
 		static bool schedule();
 		void schedule(scheduler*);
@@ -125,6 +116,7 @@ namespace netlib
 		list_t::iterator mPosition;
 		netlib::scheduler *mScheduler;
 		int mProtection;
+		run_t mRun;
 	};
 
 	class NETLIB_API scheduler

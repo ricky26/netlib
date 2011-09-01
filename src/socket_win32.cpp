@@ -219,7 +219,16 @@ namespace netlib
 		{
 			if(WSAGetLastError() == WSA_IO_PENDING)
 			{
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx((HANDLE)si->handle, &state.overlapped);
+					throw;
+				}
+
 				if(state.error != 0)
 					return false;
 			}
@@ -292,7 +301,17 @@ namespace netlib
 			if(WSAGetLastError() == WSA_IO_PENDING)
 			{
 				state.thread = uthread::current();
-				uthread::suspend();
+
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx((HANDLE)si->handle, &state.overlapped);
+					throw;
+				}
+
 				if(state.error != 0)
 					ret.close();
 			}
@@ -324,7 +343,16 @@ namespace netlib
 			if(ReadFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx((HANDLE)si->handle, &state.overlapped);
+					throw;
+				}
+
 				err = state.error;
 			}
 			
@@ -354,7 +382,16 @@ namespace netlib
 			if(WriteFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
-				uthread::suspend();
+				try
+				{
+					uthread::suspend();
+				}
+				catch(std::exception const&)
+				{
+					CancelIoEx((HANDLE)si->handle, &state.overlapped);
+					throw;
+				}
+
 				err = state.error;
 			}
 

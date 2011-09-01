@@ -38,8 +38,6 @@ namespace netlib
 			start = NULL;
 			argument = NULL;
 			running = TRUE;
-			exception = NULL;
-			exception_redirect = NULL;
 		}
 
 		uthread_impl(uthread_start_t _start, void *_param)
@@ -55,8 +53,6 @@ namespace netlib
 			start = _start;
 			argument = _param;
 			running = FALSE;
-			exception = NULL;
-			exception_redirect = NULL;
 		}
 
 		static void after_swap();
@@ -65,10 +61,6 @@ namespace netlib
 		void *fiber;
 		uthread_start_t start;
 		void *argument;
-		void *exception;
-		void *throw_info;
-		uthread_impl *swapped_with;
-		uthread_impl *exception_redirect;
 	};
 	
 	//
@@ -117,14 +109,10 @@ namespace netlib
 
 		InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
 
-		if(swapped_to->exception)
+		if(swapped_to->mRun)
 		{
-			void *exc = swapped_to->exception;
-			void *ti = swapped_to->throw_info;
-
-			swapped_to->exception = NULL;
-
-			_CxxThrowException(exc, ti);
+			swapped_to->mRun();
+			swapped_to->mRun = run_t();
 		}
 		
 		swapped_to->release();
@@ -153,7 +141,6 @@ namespace netlib
 		if(!swapped_from->suspended())
 			swapped_from->scheduler()->schedule(swapped_from);
 
-		swapped_to->swapped_with = swapped_from;
 		SwitchToFiber(swapped_to->fiber);
 		uthread_impl::after_swap();
 		return true;
@@ -170,8 +157,16 @@ namespace netlib
 		}
 		catch(std::exception const& _e)
 		{
-			std::cerr << "Exception occurred in fiber " 
+			std::cerr << "Exception occurred in uthread " 
 				<< impl << ": " << _e.what() << std::endl;
+
+			if(impl->protection() <= 0 && IsDebuggerPresent())
+				throw;
+		}
+		catch(...)
+		{
+			std::cerr << "Unknown exception occurred in uthread "
+				<< impl << std::endl;
 
 			if(impl->protection() <= 0 && IsDebuggerPresent())
 				throw;
@@ -192,40 +187,6 @@ namespace netlib
 		thr->fiber = fib;
 		thr->schedule(cur->scheduler());
 		return thr;
-	}
-
-	static LONG CALLBACK uthread_exception_redirector(EXCEPTION_POINTERS *_ex)
-	{
-		uthread_impl *cur = ::netlib::current();
-		uthread_impl *next = cur->exception_redirect;
-		if(next->exception)
-			return EXCEPTION_CONTINUE_SEARCH;
-
-		next->exception = ((char*)_ex->ExceptionRecord->ExceptionInformation[1])+300;
-		next->throw_info = (void*)_ex->ExceptionRecord->ExceptionInformation[2];
-		return EXCEPTION_CONTINUE_SEARCH;
-	}
-
-	void uthread::redirect_exceptions(handle_t _h)
-	{
-		uthread_impl *cur = ::netlib::current();
-
-		if(_h.get())
-		{
-			// Enable
-			cur->exception_redirect = (uthread_impl*)_h.get();
-			uthread_exception_redir = AddVectoredExceptionHandler(
-				TRUE, uthread_exception_redirector);
-		}
-		else
-		{
-			uthread_impl *next = cur->exception_redirect;
-
-			RemoveVectoredExceptionHandler(uthread_exception_redir);
-
-			cur->exception_redirect = NULL;
-			swap(next);
-		}
 	}
 	
 	void uthread::exit()
