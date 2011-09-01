@@ -59,10 +59,16 @@ namespace netlib
 
 	void uthread::run(run_t const& _fn)
 	{
+		if(dead())
+			return;
+
 		uthread::handle_t cur = uthread::current();
 
 		mSuspended = true;
-		mRun = [_fn, cur]() { _fn(); swap(cur.get()); };
+		mRun = [_fn, cur]()
+		{ 
+			_fn(); swap(cur.get());
+		};
 		swap(this);
 	}
 
