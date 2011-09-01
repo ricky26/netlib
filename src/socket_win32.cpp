@@ -305,10 +305,10 @@ namespace netlib
 	{
 		socket_internal *si = socket_internal::get(mInternal);
 
-		if(mInternal != (void*)INVALID_SOCKET)
+		if(si->handle != (void*)INVALID_SOCKET)
 		{
-			CloseHandle((HANDLE)mInternal);
-			mInternal = (void*)INVALID_SOCKET;
+			CloseHandle((HANDLE)si->handle);
+			si->handle = (void*)INVALID_SOCKET;
 		}
 	}
 
