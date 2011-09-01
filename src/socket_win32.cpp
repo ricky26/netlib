@@ -267,7 +267,7 @@ namespace netlib
 
 		socket_internal *si = socket_internal::get(mInternal);
 
-		socket ret;
+		socket ret(af_inet);
 
 		iocp_async_state state;
 		state.thread = uthread::current();
@@ -304,7 +304,6 @@ namespace netlib
 
 	size_t socket::read(void *_buffer, size_t _amt)
 	{
-
 		socket_internal *si = socket_internal::get(mInternal);
 		if(mInternal != (void*)INVALID_SOCKET)
 		{
@@ -318,7 +317,7 @@ namespace netlib
 				uthread::suspend();
 				err = state.error;
 			}
-			CRITICAL_SECTION;
+			
 			if(err)
 			{
 				std::cerr << "Recv Err: " << WSAGetLastError() << std::endl;

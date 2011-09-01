@@ -1,30 +1,38 @@
 #include "netlib.h"
-#include "owned_ptr.h"
+#include "ref_counted.h"
+#include <functional>
+#include <cstdlib>
 
 #pragma once
 
 namespace netlib
 {
-	class data
+	class data: public ref_counted
 	{
 	public:
-		NETLIB_INLINE data() : mSize(0) {}
-		NETLIB_INLINE data(void *_ptr, size_t _sz): mData(_ptr), mSize(_sz) {}
-		
-		NETLIB_INLINE void set(data &_d) { set(_d.ptr(), _d.size()); }
-		NETLIB_INLINE void set(void *_ptr, size_t _sz) { mData = _ptr; mSize = _sz; }
-		NETLIB_INLINE void *take() { return mData.take(); }
+		typedef handle<data> handle_t;
+		typedef std::function<void(void*)> delete_fn_t;
 
-		NETLIB_INLINE void *ptr() const { return mData.get(); }
+		NETLIB_INLINE data() : mData(NULL), mSize(0) {}
+		NETLIB_INLINE data(void *_ptr, size_t _sz, delete_fn_t _fn=&std::free)
+			: mData(_ptr), mSize(_sz), mFn(_fn) {}
+
+		NETLIB_INLINE ~data() { if(mData) mFn(mData); }
+		
+		NETLIB_INLINE void set(handle_t const& _d) { set(_d->ptr(), _d->size()); }
+		NETLIB_INLINE void set(void *_ptr, size_t _sz) { mData = _ptr; mSize = _sz; }
+
+		NETLIB_INLINE void *ptr() const { return mData; }
 		NETLIB_INLINE size_t size() const { return mSize; }
 
 		template<typename T>
 		NETLIB_INLINE T *ptr() const { return static_cast<T*>(mData.get()); }
 
-		NETLIB_INLINE data &operator =(data &_d) { set(_d); return *this; }
+		static void no_free(void*) {};
 
 	private:
-		owned_ptr<> mData;
+		void *mData;
 		size_t mSize;
+		delete_fn_t mFn;
 	};
 }
