@@ -22,6 +22,8 @@ namespace netlib
 
 		typedef handle<uthread> handle_t;
 		typedef std::list<handle_t> list_t;
+		typedef std::pair<handle_t, uint64_t> sleep_pair_t;
+		typedef std::list<sleep_pair_t> sleep_list_t;
 		typedef std::function<void()> run_t;
 
 		virtual ~uthread();
@@ -74,19 +76,25 @@ namespace netlib
 		static bool swap(uthread *_other);
 		
 		void resume();
+		
+		template<typename T>
+		NETLIB_INLINE void raise(T &_exc) { run([_exc]() { throw _exc; }); }
 
 		template<typename T>
-		inline void raise(T &_exc) { run([_exc]() { throw _exc; }); }
+		NETLIB_INLINE void timeout_raise(int _ms, T &_exc) { timeout(_ms, [_exc, this]() { raise(_exc); }); }
 
 		void run(run_t const& _fn);
 
-		static bool schedule();
 		void schedule(scheduler*);
 
 		NETLIB_INLINE netlib::scheduler *scheduler() const { return mScheduler; }
 		NETLIB_INLINE bool suspended() const { return mSuspended; }
 		NETLIB_INLINE bool dead() const { return mDead; }
+		
+		NETLIB_INLINE static void timeout(int _ms, std::function<void()> const& _fn) { create([_ms, _fn]() { sleep(_ms); _fn(); }); }
 
+		static bool schedule();
+		static void sleep(int _ms);
 		static void suspend();
 		static void exit();
 
@@ -104,9 +112,6 @@ namespace netlib
 		static void shutdown();
 		static void enable_uthread(); // Enables uthreads on the current thread.
 
-	protected:
-		NETLIB_INLINE list_t::iterator current_position() const { return mPosition; }
-
 	private:
 		uthread();
 		
@@ -114,6 +119,7 @@ namespace netlib
 		bool mDead;
 		handle<netlib::thread> mThread;
 		list_t::iterator mPosition;
+		sleep_list_t::iterator mSleepPosition;
 		netlib::scheduler *mScheduler;
 		int mProtection;
 		run_t mRun;
@@ -132,12 +138,18 @@ namespace netlib
 		void create_worker_threads(int _icnt);
 
 	protected:
-		virtual void schedule(uthread::handle_t _h);
-		virtual void unschedule(uthread::handle_t _h);
-		virtual bool swap();
+		void add(uthread::handle_t _h);
+		void remove(uthread::handle_t _h);
+
+		void schedule(uthread::handle_t _h);
+		void sleep(uthread::handle_t _h, uint64_t _endTime);
+		void unschedule(uthread::handle_t _h);
+		bool swap();
 
 	private:
 		critical_section mLock;
+		critical_section mSleepLock;
 		uthread::list_t mScheduled;
+		uthread::sleep_list_t mSleepers;
 	};
 }

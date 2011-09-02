@@ -48,5 +48,6 @@ namespace netlib
 	NETLIB_API void be_nice();
 	NETLIB_API void sleep(int _ms);
 
+	// Returns time from an aribtrary point in microseconds.
 	NETLIB_API uint64_t time();
 }

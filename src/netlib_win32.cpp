@@ -216,4 +216,9 @@ namespace netlib
 	{
 		Sleep(_ms);
 	}
+
+	NETLIB_API uint64_t time()
+	{
+		return gTime;
+	}
 }

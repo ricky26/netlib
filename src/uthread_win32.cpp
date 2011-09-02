@@ -228,5 +228,6 @@ namespace netlib
 		impl->fiber = f;
 		impl->mScheduler = gThreadScheduler;
 		impl->mPosition = gThreadScheduler->mScheduled.end();
+		impl->mSleepPosition = gThreadScheduler->mSleepers.end();
 	}
 }

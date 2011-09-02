@@ -21,15 +21,9 @@ namespace netlib
 		return --thr->mProtection;
 	}
 
-	bool uthread::schedule()
-	{
-		uthread *cur = current().get();
-		netlib::scheduler *sch = cur->scheduler();
-		return sch->swap();
-	}
-
 	void uthread::schedule(netlib::scheduler *_sch)
 	{
+		_sch->add(this);
 		_sch->schedule(this);
 	}
 
@@ -72,6 +66,21 @@ namespace netlib
 		swap(this);
 	}
 
+	bool uthread::schedule()
+	{
+		uthread *cur = current().get();
+		netlib::scheduler *sch = cur->scheduler();
+		return sch->swap();
+	}
+
+	void uthread::sleep(int _ms)
+	{
+		uthread::handle_t cur = current();
+		netlib::scheduler *sch = cur->scheduler();
+		sch->sleep(cur, time() + (_ms*1000));
+		uthread::suspend();
+	}
+
 	//
 	// scheduler
 	//
@@ -84,17 +93,28 @@ namespace netlib
 	{
 	}
 
-	void scheduler::schedule(uthread::handle_t _thr)
+	void scheduler::add(uthread::handle_t _thr)
 	{
 		netlib::scheduler *old = _thr->scheduler();
 		if(old != this)
 		{
 			if(old)
-				old->unschedule(_thr);
+				old->remove(_thr);
 
 			_thr->mScheduler = this;
+			_thr->mPosition = mScheduled.end();
+			_thr->mSleepPosition = mSleepers.end();
 		}
-		else if(_thr->mPosition != mScheduled.end())
+	}
+
+	void scheduler::remove(uthread::handle_t _thr)
+	{
+		unschedule(_thr);
+	}
+
+	void scheduler::schedule(uthread::handle_t _thr)
+	{
+		if(_thr->mPosition != mScheduled.end())
 			return;
 
 		mLock.lock();
@@ -105,21 +125,76 @@ namespace netlib
 		mLock.unlock();
 	}
 
-	void scheduler::unschedule(uthread::handle_t _thr)
+	void scheduler::sleep(uthread::handle_t _thr, uint64_t _end)
 	{
-		if(_thr->scheduler() != this
-			|| _thr->mPosition == mScheduled.end())
+		if(_thr->mSleepPosition != mSleepers.end())
 			return;
 
+		mSleepLock.lock();
+		uthread::sleep_pair_t to_insert(_thr, _end);
+		auto it = mSleepers.begin();
+
+		for(auto it = mSleepers.begin();
+			it != mSleepers.end(); it++)
+		{
+			if(it->second > _end)
+			{
+				it--;
+				mSleepers.insert(it, to_insert);
+				it++;
+				_thr->mSleepPosition = it;
+				mSleepLock.unlock();
+				return;
+			}
+		}
+
+		mSleepers.push_back(to_insert);
+		it = mSleepers.end();
+		it--;
+		_thr->mSleepPosition = it;
+		mSleepLock.unlock();
+	}
+
+	void scheduler::unschedule(uthread::handle_t _thr)
+	{
+		mSleepLock.lock();
+		if(_thr->mSleepPosition != mSleepers.end())
+		{
+			mSleepers.erase(_thr->mSleepPosition);
+			_thr->mSleepPosition = mSleepers.end();
+		}
+		mSleepLock.unlock();
+
 		mLock.lock();
-		mScheduled.erase(_thr->mPosition);
-		_thr->mPosition = mScheduled.end();
+		if(_thr->mPosition != mScheduled.end())
+		{
+			mScheduled.erase(_thr->mPosition);
+			_thr->mPosition = mScheduled.end();
+		}
 		mLock.unlock();
 	}
 
 	bool scheduler::swap()
 	{
 		uthread *thr_p = NULL;
+		uint64_t tm = time();
+
+		mSleepLock.lock();
+		if(!mSleepers.empty())
+		{
+			if(mSleepers.front().second < tm)
+			{
+				thr_p = mSleepers.front().first.get();
+				thr_p->acquire();
+				mSleepers.pop_front();
+				thr_p->mSleepPosition = mSleepers.end();
+				mSleepLock.unlock();
+
+				return uthread::swap(thr_p);
+			}
+		}
+		mSleepLock.unlock();
+
 		do
 		{
 			mLock.lock();
