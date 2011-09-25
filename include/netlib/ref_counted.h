@@ -5,6 +5,7 @@
 
 namespace netlib
 {
+	class NETLIB_API weak_target;
 	class NETLIB_API ref_counted
 	{
 	public:
@@ -40,6 +41,7 @@ namespace netlib
 	{
 	public:
 		typedef T *ptr_t;
+		typedef const T * const cptr_t;
 		typedef handle<T> handle_t;
 
 		inline handle()
@@ -47,9 +49,9 @@ namespace netlib
 			ptr = NULL;
 		}
 
-		inline handle(ptr_t _t)
+		inline handle(cptr_t _t)
 		{
-			ptr = _t;
+			ptr = (ptr_t)_t;
 			if(ptr)
 				ptr->acquire();
 		}
