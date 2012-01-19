@@ -125,7 +125,7 @@ namespace netlib
 		run_t mRun;
 	};
 
-	class NETLIB_API scheduler
+	class NETLIB_API scheduler: public ref_counted
 	{
 	public:
 		friend class uthread;
@@ -145,6 +145,8 @@ namespace netlib
 		void sleep(uthread::handle_t _h, uint64_t _endTime);
 		void unschedule(uthread::handle_t _h);
 		bool swap();
+
+		void stop();
 
 	private:
 		critical_section mLock;

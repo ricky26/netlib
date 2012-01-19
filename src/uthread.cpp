@@ -98,6 +98,8 @@ namespace netlib
 		netlib::scheduler *old = _thr->scheduler();
 		if(old != this)
 		{
+			acquire();
+
 			if(old)
 				old->remove(_thr);
 
@@ -110,6 +112,33 @@ namespace netlib
 	void scheduler::remove(uthread::handle_t _thr)
 	{
 		unschedule(_thr);
+		_thr->mScheduler = NULL;
+		release();
+	}
+	
+	void scheduler::stop()
+	{
+		mLock.lock();
+
+		for(auto it = mScheduled.begin();
+			it != mScheduled.end(); it++)
+		{
+			(*it)->mScheduler = nullptr;
+		}
+
+		mScheduled.clear();
+		mLock.unlock();
+
+		mSleepLock.lock();
+
+		for(auto it = mSleepers.begin();
+			it != mSleepers.end(); it++)
+		{
+			(it)->first->mScheduler = nullptr;
+		}
+
+		mSleepers.clear();
+		mSleepLock.unlock();
 	}
 
 	void scheduler::schedule(uthread::handle_t _thr)
