@@ -89,10 +89,12 @@
     <ClCompile Include="src\event.cpp" />
     <ClCompile Include="src\file_win32.cpp" />
     <ClCompile Include="src\http.cpp" />
+    <ClCompile Include="src\internal.cpp" />
     <ClCompile Include="src\irc.cpp" />
     <ClCompile Include="src\json.cpp" />
     <ClCompile Include="src\md5_win32.cpp" />
     <ClCompile Include="src\module_win32.cpp" />
+    <ClCompile Include="src\netlib.cpp" />
     <ClCompile Include="src\netlib_win32.cpp" />
     <ClCompile Include="src\pipe_win32.cpp" />
     <ClCompile Include="src\ref_counted.cpp" />

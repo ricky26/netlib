@@ -81,7 +81,9 @@ namespace netlib
 		acquire(); // Make sure it's not destroyed again.
 
 		uthread_impl *ui = static_cast<uthread_impl*>(this);
-		mScheduler->unschedule(this);
+		if(mScheduler)
+			mScheduler->remove(this);
+
 		delete ui;
 	}
 
@@ -209,12 +211,16 @@ namespace netlib
 		// TODO: this needs to be done
 		// for every thread. >_>
 		if(gThreadScheduler)
-			delete gThreadScheduler;
+		{
+			gThreadScheduler->stop();
+			gThreadScheduler->release();
+		}
 	}
 	
 	void uthread::enable_uthread()
 	{
 		gThreadScheduler = new netlib::scheduler();
+		gThreadScheduler->acquire();
 
 		uthread_impl *impl = new uthread_impl();
 		void *f = ConvertThreadToFiber(impl);

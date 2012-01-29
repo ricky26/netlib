@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <functional>
 
 namespace netlib
 {
@@ -44,6 +45,7 @@ namespace netlib
 	NETLIB_API bool think();
 	NETLIB_API bool running();
 	NETLIB_API int run_main_loop();
+	NETLIB_API int run_main(std::function<void()> const&);
 
 	NETLIB_API void be_nice();
 	NETLIB_API void sleep(int _ms);
