@@ -1,5 +1,6 @@
 #include "netlib.h"
 #include "atomic.h"
+#include <type_traits>
 
 #pragma once
 
@@ -29,12 +30,40 @@ namespace netlib
 
 		inline ref_count_t ref_count() { return mRefCount; }
 
+		inline netlib::weak_target *weak_target() const;
+
 	protected:
 		virtual void destroy();
 
 		ref_counted();
 		ref_count_t mRefCount;
+		netlib::weak_target *mWeak;
 	};
+
+	class weak_target: public ref_counted
+	{
+	public:
+		friend class ref_counted;
+
+		NETLIB_INLINE ref_counted *target() const { return mTarget; }
+
+	protected:
+		inline weak_target(ref_counted *_r): mTarget(_r) {}
+
+		ref_counted *mTarget;
+	};
+
+	weak_target *ref_counted::weak_target() const
+	{
+		if(!mWeak)
+		{
+			netlib::weak_target *w = new netlib::weak_target((ref_counted*)this);
+			w->acquire();
+			(netlib::weak_target*&)mWeak = w;
+		}
+
+		return mWeak;
+	}
 
 	template<typename T>
 	class handle
@@ -140,5 +169,34 @@ namespace netlib
 
 	private:
 		ptr_t ptr;
+	};
+
+	template<typename T>
+	class weak_handle: public handle<weak_target>
+	{
+	public:
+		typedef handle<weak_target> parent_t;
+		typedef weak_handle<T> self_t;
+		typedef handle<T> handle_t;
+		typedef T *ptr_t;
+
+		inline weak_handle(): parent_t() {}
+		inline weak_handle(ptr_t _ptr): parent_t(_ptr->weak_target()) {}
+
+		inline ptr_t get() const
+		{
+			return parent_t::get()->target();
+		}
+
+		inline operator bool() const
+		{
+			return get() != nullptr;
+		}
+
+		inline self_t &operator =(handle_t const& _other)
+		{
+			reset(_other->weak_target());
+			return *this;
+		}
 	};
 }

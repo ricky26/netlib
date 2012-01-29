@@ -96,6 +96,7 @@
     <ClCompile Include="src\netlib_win32.cpp" />
     <ClCompile Include="src\pipe_win32.cpp" />
     <ClCompile Include="src\ref_counted.cpp" />
+    <ClCompile Include="src\resource_win32.cpp" />
     <ClCompile Include="src\sha1_win32.cpp" />
     <ClCompile Include="src\shared_memory_win32.cpp" />
     <ClCompile Include="src\socket_win32.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="include\netlib\owned_ptr.h" />
     <ClInclude Include="include\netlib\pipe.h" />
     <ClInclude Include="include\netlib\ref_counted.h" />
+    <ClInclude Include="include\netlib\resource.h" />
     <ClInclude Include="include\netlib\sha1.h" />
     <ClInclude Include="include\netlib\shared_memory.h" />
     <ClInclude Include="include\netlib\socket.h" />
@@ -145,6 +147,9 @@
     <ResourceCompile Include="netlib.rc">
       <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0809</Culture>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="data2.bin" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

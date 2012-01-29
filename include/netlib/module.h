@@ -9,9 +9,12 @@ namespace netlib
 	{
 	public:
 		module();
+		explicit module(void *_h); // From handle
 		module(module const& _mod);
 		module(std::string const& _name);
 		virtual ~module();
+
+		void *handle() const;
 
 		bool valid() const;
 		bool open(std::string const& _name);
@@ -24,8 +27,14 @@ namespace netlib
 		{
 			return static_cast<T>(symbol(_nm));
 		}
+		
+		module &operator =(module const& _b);
+		NETLIB_INLINE bool operator ==(module const& _b) const { return mInternal == _b.mInternal; }
+		NETLIB_INLINE bool operator !=(module const& _b) const { return mInternal != _b.mInternal; }
 
 	private:
 		void *mInternal;
 	};
+
+	NETLIB_API module netlib_module();
 }

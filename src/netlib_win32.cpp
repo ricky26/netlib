@@ -5,6 +5,7 @@
 #include "netlib/socket.h"
 #include "netlib/pipe.h"
 #include "netlib/file.h"
+#include "netlib/module.h"
 #include "netlib/win32.h"
 #include "netlib_win32.h"
 #include <unordered_map>
@@ -17,12 +18,27 @@ namespace netlib
 	static handle<thread> gTimeThread; // TODO: swap for CPU handle
 
 	HANDLE gCompletionPort = NULL;
+	module gNetlibModule;
 	static bool gIsDone;
 	static int gRetVal;
 
 	typedef std::unordered_map<int, message_handler_t> msg_map_t;
 	static msg_map_t gMessageMap;
 	NETLIB_API void atexit(atexit_t const& _ae);
+
+	NETLIB_API module netlib_module()
+	{
+		return gNetlibModule;
+	}
+
+	extern "C"
+	BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
+	{
+		if(dwReason = DLL_PROCESS_ATTACH)
+			gNetlibModule = module((void*)hInstance);
+
+		return TRUE;
+	}
 
 	static inline void setup_time()
 	{
