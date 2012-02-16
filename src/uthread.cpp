@@ -1,4 +1,5 @@
 #include <netlib/uthread.h>
+#include <algorithm>
 
 namespace netlib
 {
@@ -274,5 +275,73 @@ namespace netlib
 	{
 		for(int i = 0; i < _icnt; i++)
 			create_worker_thread();
+	}
+
+	//
+	// channel
+	//
+
+	channel::channel(): mStatus(0)
+	{
+	}
+
+	channel::~channel()
+	{
+		mStatus = 0;
+		std::for_each(mValues.begin(), mValues.end(),
+			[](element &_el) {
+				_el.thread->raise(std::exception());
+		});
+	}
+
+	void channel::write_ptr(void *_val)
+	{
+		mLock.lock();
+		if(mStatus >= 0)
+		{
+			// write was first
+			element el = { uthread::current(), _val, nullptr };
+			mValues.push_back(el);
+			mStatus++;
+			mLock.unlock();
+			uthread::suspend();
+		}
+		else
+		{
+			// write was second
+			element el = mValues.front();
+			mValues.pop_front();
+			mStatus--;
+			mLock.unlock();
+
+			el.fn(el.param, _val);
+			uthread::swap(el.thread.get());
+		}
+	}
+
+	void channel::read_ptr(read_fn_t _fn, void *_param)
+	{
+		mLock.lock();
+		if(mStatus <= 0)
+		{
+			// read was first
+
+			element el = { uthread::current(), _param, _fn };
+			mValues.push_back(el);
+			mStatus--;
+			mLock.unlock();
+			uthread::suspend();
+		}
+		else
+		{
+			// read was second
+			element el = mValues.front();
+			mValues.pop_front();
+			mStatus--;
+			mLock.unlock();
+
+			_fn(_param, el.param);
+			uthread::swap(el.thread.get());
+		}
 	}
 }

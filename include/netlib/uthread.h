@@ -154,4 +154,43 @@ namespace netlib
 		uthread::list_t mScheduled;
 		uthread::sleep_list_t mSleepers;
 	};
+
+	class NETLIB_API channel: public ref_counted
+	{
+	public:
+		typedef void (*read_fn_t)(void *_param, void *_val);
+
+		struct element
+		{
+			uthread::handle_t thread;
+			void *param;
+			read_fn_t fn;
+		};
+
+		channel();
+		~channel();
+
+		void write_ptr(void *_val);
+		void read_ptr(read_fn_t _fn, void *_param);
+
+		template<typename T>
+		inline void write(T &_var)
+		{
+			write_ptr(&_var);
+		}
+
+		template<typename T>
+		inline void read(T &_var)
+		{
+			read_ptr([&_var](void *_param, void *_val) {
+				T *src = reinterpret_cast<T*>(_val);
+				_var = *src;
+			});
+		}
+
+	private:
+		int mStatus;
+		std::list<element> mValues;
+		critical_section mLock;
+	};
 }
