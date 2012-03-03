@@ -148,27 +148,25 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			if(ReadFile(fi->handle, _buffer, (DWORD)_amt,
-				&state.amount, &state.overlapped) == TRUE
-				|| GetLastError() == ERROR_IO_PENDING)
-			{
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx(fi->handle, &state.overlapped);
-					throw;
-				}
+			ReadFile(fi->handle, _buffer, (DWORD)_amt,
+				&state.amount, &state.overlapped);
 
 				fi->position.QuadPart += state.amount;
-				if(state.error != 0)
-					return 0;
-			}
-			else
+			try
 			{
-				std::cerr << "Recv Err: " << WSAGetLastError() << std::endl;
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx(fi->handle, &state.overlapped);
+				throw;
+			}
+
+			fi->position.QuadPart += state.amount;
+
+			if(state.error)
+			{
+				std::cerr << "Recv Err: " << state.error << std::endl;
 				return 0;
 			}
 
@@ -186,27 +184,23 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			if(WriteFile(fi->handle, _buffer, (DWORD)_amt,
-				&state.amount, &state.overlapped) == TRUE
-				|| GetLastError() == ERROR_IO_PENDING)
-			{
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx(fi->handle, &state.overlapped);
-					throw;
-				}
+			WriteFile(fi->handle, _buffer, (DWORD)_amt,
+				&state.amount, &state.overlapped);
 
-				fi->position.QuadPart += state.amount;
-				if(state.error != 0)
-					return 0;
-			}
-			else
+			try
 			{
-				std::cerr << "WERR: " << GetLastError() << std::endl;
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx(fi->handle, &state.overlapped);
+				throw;
+			}
+
+			fi->position.QuadPart += state.amount;
+			if(state.error)
+			{
+				std::cerr << "WERR: " << state.error << std::endl;
 				return 0;
 			}
 

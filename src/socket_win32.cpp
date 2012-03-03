@@ -21,7 +21,11 @@ namespace netlib
 			: handle(_sock), connectEx(nullptr), acceptEx(nullptr)
 		{
 			acquire();
+			add_to_completion();
+		}
 
+		void add_to_completion()
+		{
 			if(handle != INVALID_SOCKET)
 			{
 				if(CreateIoCompletionPort((HANDLE)handle,
@@ -135,17 +139,8 @@ namespace netlib
 		else
 			sock = WSASocket(af, type, prot, NULL, 0, WSA_FLAG_OVERLAPPED);
 
-		if(sock != INVALID_SOCKET)
-		{
-			if(CreateIoCompletionPort((HANDLE)sock,
-				gCompletionPort, 0, 0) != gCompletionPort)
-			{
-				closesocket(sock);
-				sock = INVALID_SOCKET;
-			}
-		}
 		si->handle = sock;
-
+		si->add_to_completion();
 		return true;
 	}
 	
@@ -224,16 +219,7 @@ namespace netlib
 		{
 			if(WSAGetLastError() == WSA_IO_PENDING)
 			{
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx((HANDLE)si->handle, &state.overlapped);
-					throw;
-				}
-
+				uthread::suspend();
 				if(state.error != 0)
 					return false;
 			}
@@ -279,7 +265,7 @@ namespace netlib
 
 		socket_internal *si = socket_internal::get(mInternal);
 
-		socket ret(af_inet);
+		socket ret(af_inet); // TODO: determine from current socket?
 
 		iocp_async_state state;
 		state.thread = uthread::current();
@@ -309,17 +295,7 @@ namespace netlib
 			if(WSAGetLastError() == WSA_IO_PENDING)
 			{
 				state.thread = uthread::current();
-
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx((HANDLE)si->handle, &state.overlapped);
-					throw;
-				}
-
+				uthread::suspend();
 				if(state.error != 0)
 					ret.close();
 			}
@@ -334,7 +310,7 @@ namespace netlib
 
 		if(si->handle != INVALID_SOCKET)
 		{
-			CloseHandle((HANDLE)si->handle);
+			closesocket(si->handle);
 			si->handle = INVALID_SOCKET;
 		}
 	}
@@ -347,26 +323,28 @@ namespace netlib
 			iocp_async_state state;
 			state.thread = uthread::current();
 
-			int err;
-			if(ReadFile((HANDLE)si->handle, _buffer, (DWORD)_amt, &state.amount, &state.overlapped) == TRUE
-				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
-			{
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx((HANDLE)si->handle, &state.overlapped);
-					throw;
-				}
-
-				err = state.error;
-			}
+			DWORD flags = 0;
+			WSABUF buffers;
+			buffers.buf = (CHAR*)_buffer;
+			buffers.len = (ULONG)_amt;
 			
+			WSARecv(si->handle, &buffers, 1, &state.amount, &flags, &state.overlapped, NULL);
+
+			try
+			{
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx((HANDLE)si->handle, &state.overlapped);
+				throw;
+			}
+
+			int err = state.error;
 			if(err)
 			{
 				std::cerr << "Recv Err: " << WSAGetLastError() << std::endl;
+				CancelIoEx((HANDLE)si->handle, &state.overlapped);
 				close();
 				return 0;
 			}
@@ -379,33 +357,34 @@ namespace netlib
 
 	size_t socket::write(const void *_buffer, size_t _amt)
 	{
-
 		socket_internal *si = socket_internal::get(mInternal);
 		if(si->handle != INVALID_SOCKET)
 		{
 			iocp_async_state state;
 			state.thread = uthread::current();
 
-			int err;
-			if(WriteFile((HANDLE)si->handle, _buffer, (DWORD)_amt, &state.amount, &state.overlapped) == TRUE
-				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
-			{
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx((HANDLE)si->handle, &state.overlapped);
-					throw;
-				}
+			DWORD flags = 0;
+			WSABUF buffers;
+			buffers.buf = (CHAR*)_buffer;
+			buffers.len = (ULONG)_amt;
+			
+			WSASend(si->handle, &buffers, 1, &state.amount, flags, &state.overlapped, NULL);
 
-				err = state.error;
+			try
+			{
+				uthread::suspend();
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx((HANDLE)si->handle, &state.overlapped);
+				throw;
 			}
 
+			int err = state.error;
 			if(err)
 			{
 				std::cerr << "WERR: " << GetLastError() << std::endl;
+				CancelIoEx((HANDLE)si->handle, &state.overlapped);
 				close();
 				return 0;
 			}

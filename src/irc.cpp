@@ -135,19 +135,24 @@ namespace netlib
 
 		_str << mCommand;
 
-		for(parameters_t::const_iterator it = mParameters.begin();
+		for(auto it = mParameters.begin();
 			it != mParameters.end(); it++)
 		{
 			std::string const& str = *it;
-			if(!str.empty() && str[0] == ':')
-			{
-				_str << " " << str;
-				break;
-			}
-			else if(str.empty()
-				|| str.find(' ') != std::string::npos)
+			
+			auto next = it;
+			next++;
+
+			if(str.find(' ') != std::string::npos
+				|| (!str.empty() && str[0] == ':'))
 			{
 				_str << " :" << str;
+
+				while(next != mParameters.end())
+				{
+					_str << " " << *next;
+					next++;
+				}
 				break;
 			}
 			else
@@ -182,10 +187,13 @@ namespace netlib
 			return _str << "\r\n";
 		}
 
-		NETLIB_API irc_message notice(std::string const& _text)
+		NETLIB_API irc_message notice(std::string const& _text, std::string const& _to)
 		{
 			irc_message::parameters_t params;
-			params.push_back("*");
+			if(_to.empty())
+				params.push_back("*");
+			else
+				params.push_back(_to);
 			params.push_back(_text);
 
 			return irc_message("NOTICE", params);
