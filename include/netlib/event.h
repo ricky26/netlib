@@ -9,7 +9,7 @@ namespace netlib
 	class NETLIB_API event
 	{
 	public:
-		event(void *_sender=NULL);
+		event(void *_sender=nullptr);
 
 		NETLIB_INLINE void *sender() const { return mSender; }
 

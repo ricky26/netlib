@@ -17,7 +17,7 @@ namespace netlib
 		{
 			handle = INVALID_HANDLE_VALUE;
 			size = 0;
-			pointer = NULL;
+			pointer = nullptr;
 		}
 
 		static shmem_internal *get(void *_p)
@@ -41,6 +41,12 @@ namespace netlib
 		mInternal = new shmem_internal();
 		open(_name, _sz);
 	}
+	
+	shared_memory::shared_memory(shared_memory &&_mem)
+		: mInternal(_mem.mInternal)
+	{
+		_mem.mInternal = nullptr;
+	}
 
 	shared_memory::~shared_memory()
 	{
@@ -49,7 +55,7 @@ namespace netlib
 			close();
 
 			shmem_internal *si = shmem_internal::get(mInternal);
-			mInternal = NULL;
+			mInternal = nullptr;
 
 			delete si;
 		}
@@ -79,7 +85,7 @@ namespace netlib
 		UnmapViewOfFile(si->pointer);
 		CloseHandle(si->handle);
 
-		si->pointer = NULL;
+		si->pointer = nullptr;
 		si->size = 0;
 		si->handle = INVALID_HANDLE_VALUE;
 	}
@@ -117,7 +123,7 @@ namespace netlib
 
 		std::string name = "Global\\" + _name;
 		HANDLE hMap = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
-			0, _sz, _name.c_str());
+			0, (DWORD)_sz, _name.c_str());
 		if(hMap == INVALID_HANDLE_VALUE)
 			return false;
 
@@ -138,7 +144,7 @@ namespace netlib
 	{
 		shmem_internal *si = shmem_internal::get(mInternal);
 		if(!si || si->handle == INVALID_HANDLE_VALUE)
-			return NULL;
+			return nullptr;
 
 		return si->pointer;
 	}

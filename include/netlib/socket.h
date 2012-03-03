@@ -34,6 +34,7 @@ namespace netlib
 		socket(address_family _af, socket_type _sock=sock_stream,
 			socket_protocol _prot=prot_any);
 		socket(socket const&);
+		socket(socket&&);
 		explicit socket(int _sock);
 		virtual ~socket();
 

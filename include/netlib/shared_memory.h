@@ -8,6 +8,7 @@ namespace netlib
 	public:
 		shared_memory();
 		shared_memory(std::string const& _name, size_t _sz);
+		shared_memory(shared_memory&&);
 		virtual ~shared_memory();
 		
 		bool valid() const;
@@ -36,7 +37,7 @@ namespace netlib
 		T *pointer() const
 		{
 			if(size() != sizeof(T))
-				return NULL;
+				return nullptr;
 
 			return static_cast<T*>(pointer());
 		}

@@ -9,7 +9,7 @@ namespace netlib
 	{
 		HRSRC resource;
 
-		resource_internal(): resource(NULL)
+		resource_internal(): resource(nullptr)
 		{
 			acquire();
 		}
@@ -37,6 +37,13 @@ namespace netlib
 		ri->acquire();
 		mInternal = ri;
 	}
+	
+	resource::resource(resource &&_res)
+	{
+		resource_internal *ri = resource_internal::get(_res.mInternal);
+		_res.mInternal = nullptr;
+		mInternal = ri;
+	}
 
 	resource::~resource()
 	{
@@ -47,7 +54,7 @@ namespace netlib
 	bool resource::valid() const
 	{
 		resource_internal *ri = resource_internal::get(mInternal);
-		return ri->resource != NULL;
+		return ri->resource != nullptr;
 	}
 
 	bool resource::open(module const& _m, std::string const& _nm)
@@ -70,7 +77,7 @@ namespace netlib
 		if(!ri->resource)
 			return;
 		
-		ri->resource = NULL;
+		ri->resource = nullptr;
 	}
 
 	size_t resource::read(void *_buffer, size_t _amt)

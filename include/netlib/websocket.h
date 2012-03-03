@@ -63,7 +63,7 @@ namespace netlib
 		class NETLIB_API websocket
 		{
 		public:
-			websocket(netlib::socket *_sock=NULL);
+			websocket(netlib::socket *_sock=nullptr);
 			websocket(websocket&);
 			~websocket();
 

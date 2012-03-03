@@ -59,6 +59,13 @@ namespace netlib
 		pi->acquire();
 		mInternal = pi;
 	}
+	
+	pipe::pipe(pipe &&_p)
+	{
+		pipe_internal *pi = pipe_internal::get(_p.mInternal);
+		_p.mInternal = nullptr;
+		mInternal = pi;
+	}
 
 	pipe::~pipe()
 	{
@@ -233,7 +240,8 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		if(ReadFile(pi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+		if(ReadFile(pi->handle, _buffer, (DWORD)_amt,
+			&state.amount, &state.overlapped) == TRUE
 			|| GetLastError() == ERROR_IO_PENDING)
 		{
 			try
@@ -267,7 +275,8 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		if(WriteFile(pi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+		if(WriteFile(pi->handle, _buffer, (DWORD)_amt,
+			&state.amount, &state.overlapped) == TRUE
 			|| GetLastError() == ERROR_IO_PENDING)
 		{
 			try

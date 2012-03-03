@@ -14,7 +14,7 @@ namespace netlib
 		HMODULE handle;
 
 		module_internal()
-			: handle(NULL)
+			: handle(nullptr)
 		{
 			acquire();
 		}
@@ -52,6 +52,13 @@ namespace netlib
 		mi->acquire();
 		mInternal = mi;
 	}
+	
+	module::module(module &&_mod)
+	{
+		module_internal *mi = module_internal::get(_mod.mInternal);
+		mInternal = mi;
+		_mod.mInternal = nullptr;
+	}
 
 	module::module(std::string const& _nm)
 	{
@@ -74,7 +81,7 @@ namespace netlib
 	bool module::valid() const
 	{
 		module_internal *mi = module_internal::get(mInternal);
-		return mi->handle != NULL;
+		return mi->handle != nullptr;
 	}
 
 	bool module::open(std::string const& _name)
@@ -101,7 +108,7 @@ namespace netlib
 	void *module::symbol(std::string const& _nm) const
 	{
 		if(!valid())
-			return NULL;
+			return nullptr;
 
 		module_internal *mi = module_internal::get(mInternal);
 		return GetProcAddress(mi->handle, _nm.c_str());

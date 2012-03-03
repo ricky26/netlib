@@ -29,22 +29,22 @@ namespace netlib
 		typedef owned_ptr<T> self_t;
 		typedef T *ptr_t;
 
-		NETLIB_INLINE owned_ptr() : ptr(NULL) {}
+		NETLIB_INLINE owned_ptr() : ptr(nullptr) {}
 
 		NETLIB_INLINE owned_ptr(ptr_t const& _ptr)
 			: ptr(_ptr) {}
 
-		NETLIB_INLINE owned_ptr(self_t &_ptr)
+		NETLIB_INLINE owned_ptr(self_t &&_ptr)
 			: ptr(_ptr.ptr)
 		{
-			_ptr.ptr = NULL;
+			_ptr.ptr = nullptr;
 		}
 
 		template<typename Z>
 		NETLIB_INLINE owned_ptr(owned_ptr<Z> &_ptr)
 			: ptr(static_cast<ptr_t>(_ptr.ptr))
 		{
-			_ptr.ptr = NULL;
+			_ptr.ptr = nullptr;
 		}
 
 		NETLIB_INLINE ~owned_ptr()

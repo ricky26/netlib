@@ -50,6 +50,13 @@ namespace netlib
 		fi->acquire();
 		mInternal = fi;
 	}
+	
+	file::file(file &&_f)
+	{
+		file_internal *fi = file_internal::get(_f.mInternal);
+		mInternal = fi;
+		_f.mInternal = nullptr;
+	}
 
 	file::file(std::string const& _path, int _mode)
 	{
@@ -141,7 +148,8 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			if(ReadFile(fi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(ReadFile(fi->handle, _buffer, (DWORD)_amt,
+				&state.amount, &state.overlapped) == TRUE
 				|| GetLastError() == ERROR_IO_PENDING)
 			{
 				try
@@ -178,7 +186,8 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			if(WriteFile(fi->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(WriteFile(fi->handle, _buffer, (DWORD)_amt,
+				&state.amount, &state.overlapped) == TRUE
 				|| GetLastError() == ERROR_IO_PENDING)
 			{
 				try

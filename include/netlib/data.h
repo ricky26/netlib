@@ -13,7 +13,13 @@ namespace netlib
 		typedef handle<data> handle_t;
 		typedef std::function<void(void*)> delete_fn_t;
 
-		NETLIB_INLINE data() : mData(NULL), mSize(0) {}
+		NETLIB_INLINE data() : mData(nullptr), mSize(0) {}
+		NETLIB_INLINE data(data &&_d): mData(_d.mData), mSize(_d.mSize)
+		{
+			_d.mData = nullptr;
+			_d.mSize = 0;
+		}
+
 		NETLIB_INLINE data(void *_ptr, size_t _sz, delete_fn_t _fn=&std::free)
 			: mData(_ptr), mSize(_sz), mFn(_fn) {}
 

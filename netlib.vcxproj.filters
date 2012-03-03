@@ -84,9 +84,6 @@
     <ClCompile Include="src\uthread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\atomic_win32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\module_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -198,6 +195,9 @@
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
     <ClInclude Include="include\netlib\resource.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\netlib\compiler.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
   </ItemGroup>

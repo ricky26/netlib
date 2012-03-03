@@ -127,7 +127,7 @@ namespace netlib
 						return frame();
 				}
 
-				uint32_t done = 0;
+				size_t done = 0;
 				char buff[1024];
 
 				uint8_t *maskp = (uint8_t*)&mask;
@@ -165,7 +165,7 @@ namespace netlib
 			control[0] = (_frm.flags() & 0xF0) | (_frm.opcode() & 0xf) | fin;
 			control[1] = (_frm.mask() ? 0x80 : 0);
 			
-			uint32_t sz = data.length();
+			size_t sz = data.length();
 			if(sz > 0xffff)
 				return false; // TODO: 64-bit shizz.
 			else if(sz > 126)

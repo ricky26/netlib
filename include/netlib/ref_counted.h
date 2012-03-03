@@ -10,7 +10,7 @@ namespace netlib
 	class NETLIB_API ref_counted
 	{
 	public:
-		typedef uint32_t ref_count_t;
+		typedef size_t ref_count_t;
 
 		virtual ~ref_counted();
 
@@ -65,7 +65,7 @@ namespace netlib
 		return mWeak;
 	}
 
-	template<typename T>
+	template<typename T=ref_counted>
 	class handle
 	{
 	public:
@@ -75,7 +75,7 @@ namespace netlib
 
 		inline handle()
 		{
-			ptr = NULL;
+			ptr = nullptr;
 		}
 
 		inline handle(cptr_t _t)
@@ -90,6 +90,12 @@ namespace netlib
 			ptr = _h.ptr;
 			if(ptr)
 				ptr->acquire();
+		}
+
+		inline handle(handle_t &&_h)
+			: ptr(_h.ptr)
+		{
+			_h.ptr = nullptr;
 		}
 
 		template<typename T>
@@ -126,13 +132,13 @@ namespace netlib
 		inline ptr_t take()
 		{
 			ptr_t ret = ptr;
-			ptr = NULL;
+			ptr = nullptr;
 			return ret;
 		}
 
 		inline void release()
 		{
-			reset(NULL);
+			reset(nullptr);
 		}
 
 		template<typename T>
@@ -141,9 +147,15 @@ namespace netlib
 			return handle<T>(dynamic_cast<T*>(ptr));
 		}
 
+		template<typename T>
+		handle<T> cast_static() const
+		{
+			return handle<T>(static_cast<T*>(ptr));
+		}
+
 		inline operator bool() const
 		{
-			return ptr != NULL;
+			return ptr != nullptr;
 		}
 
 		inline bool operator ==(handle_t const& _other) const

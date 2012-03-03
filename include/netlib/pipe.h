@@ -11,6 +11,7 @@ namespace netlib
 	public:
 		pipe();
 		pipe(pipe const&);
+		pipe(pipe &&);
 		explicit pipe(int _handle);
 		virtual ~pipe();
 

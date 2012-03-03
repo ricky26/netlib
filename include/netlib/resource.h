@@ -13,6 +13,7 @@ namespace netlib
 		explicit resource(module const& _m, std::string const& _name);
 		resource();
 		resource(resource const& _res);
+		resource(resource &&_res);
 		~resource();
 
 		using bitstream::read;

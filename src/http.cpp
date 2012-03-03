@@ -210,10 +210,10 @@ namespace netlib
 		}
 	}	
 
-	static uint32_t parse_websocket_key(std::string const& _str)
+	static int parse_websocket_key(std::string const& _str)
 	{
-		uint32_t val = 0;
-		uint32_t div = 0;
+		size_t val = 0;
+		size_t div = 0;
 		for(std::string::const_iterator it = _str.begin();
 			it != _str.end(); it++)
 		{
@@ -225,7 +225,7 @@ namespace netlib
 			else if(isspace(c))
 				div++;
 		}
-		return val/div;
+		return (int)(val/div);
 	}
 
 	websocket_constructor_t http_response::accept_websocket(http_request const& _req, std::string const& _protocol)
@@ -287,7 +287,7 @@ namespace netlib
 			return &mSocket;
 		}
 
-		return NULL;
+		return nullptr;
 	}
 
 	//

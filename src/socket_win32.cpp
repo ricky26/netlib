@@ -8,18 +8,17 @@
 
 namespace netlib
 {
-	static LPFN_CONNECTEX ConnectEx = NULL;
-	static LPFN_ACCEPTEX AcceptEx = NULL;
-
 	//
 	// socket_internal
 	//
 	struct socket_internal: public ref_counted
 	{
 		SOCKET handle;
+		LPFN_CONNECTEX connectEx;
+		LPFN_ACCEPTEX acceptEx;
 
 		socket_internal(SOCKET _sock=INVALID_SOCKET)
-			: handle(_sock)
+			: handle(_sock), connectEx(nullptr), acceptEx(nullptr)
 		{
 			acquire();
 
@@ -108,6 +107,12 @@ namespace netlib
 		si->acquire();
 		mInternal = si;
 	}
+	
+	socket::socket(socket &&_s)
+		: mInternal(_s.mInternal)
+	{
+		_s.mInternal = nullptr;
+	}
 
 	socket::~socket()
 	{
@@ -177,14 +182,14 @@ namespace netlib
 
 		// Find ConnectEx pointer!
 
-		if(!ConnectEx)
+		if(!si->connectEx)
 		{
 			GUID gufn = WSAID_CONNECTEX;
 			DWORD dwBytes;
 
 			if(WSAIoctl(si->handle,
 				SIO_GET_EXTENSION_FUNCTION_POINTER,
-				&gufn, sizeof(gufn), &ConnectEx, sizeof(ConnectEx),
+				&gufn, sizeof(gufn), &si->connectEx, sizeof(si->connectEx),
 				&dwBytes, NULL, NULL) == SOCKET_ERROR)
 				return false;
 		}
@@ -213,7 +218,7 @@ namespace netlib
 		memcpy((char*)he->h_addr, (char*)&addr.sin_addr.s_addr, he->h_length);
 		addr.sin_port = htons(_port);
 
-		if(ConnectEx(si->handle, (sockaddr*)&addr,
+		if(si->connectEx(si->handle, (sockaddr*)&addr,
 			sizeof(addr), NULL, 0, NULL,
 			&state.overlapped) == FALSE)
 		{
@@ -264,18 +269,6 @@ namespace netlib
 		if(::listen(si->handle, _amt) == SOCKET_ERROR)
 			return false;
 
-		if(!AcceptEx)
-		{
-			GUID gufn = WSAID_ACCEPTEX;
-			DWORD dwBytes;
-
-			if(WSAIoctl(si->handle,
-				SIO_GET_EXTENSION_FUNCTION_POINTER,
-				&gufn, sizeof(gufn), &AcceptEx, sizeof(AcceptEx),
-				&dwBytes, NULL, NULL) == SOCKET_ERROR)
-				return false;
-		}
-
 		return true;
 	}
 
@@ -292,8 +285,23 @@ namespace netlib
 		state.thread = uthread::current();
 		
 		char buf[sizeof(sockaddr_in)*2 + 32];
+
+		if(!si->acceptEx)
+		{
+			GUID gufn = WSAID_ACCEPTEX;
+			DWORD dwBytes;
+
+			if(WSAIoctl(si->handle,
+				SIO_GET_EXTENSION_FUNCTION_POINTER,
+				&gufn, sizeof(gufn), &si->acceptEx, sizeof(si->acceptEx),
+				&dwBytes, NULL, NULL) == SOCKET_ERROR)
+			{
+				ret.close();
+				return ret;
+			}
+		}
 		
-		if(AcceptEx(si->handle, (SOCKET)ret.handle(), buf,
+		if(si->acceptEx(si->handle, (SOCKET)ret.handle(), buf,
 			sizeof(buf) - ((sizeof(sockaddr_in) + 16) * 2),
 			sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
 			&state.amount, &state.overlapped) == FALSE)
@@ -340,7 +348,7 @@ namespace netlib
 			state.thread = uthread::current();
 
 			int err;
-			if(ReadFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(ReadFile((HANDLE)si->handle, _buffer, (DWORD)_amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
 				try
@@ -379,7 +387,7 @@ namespace netlib
 			state.thread = uthread::current();
 
 			int err;
-			if(WriteFile((HANDLE)si->handle, _buffer, _amt, &state.amount, &state.overlapped) == TRUE
+			if(WriteFile((HANDLE)si->handle, _buffer, (DWORD)_amt, &state.amount, &state.overlapped) == TRUE
 				|| (err = WSAGetLastError()) == WSA_IO_PENDING)
 			{
 				try

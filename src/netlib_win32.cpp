@@ -17,7 +17,7 @@ namespace netlib
 	static _declspec(thread) uint64_t gTime = 0;
 	static handle<thread> gTimeThread; // TODO: swap for CPU handle
 
-	HANDLE gCompletionPort = NULL;
+	HANDLE gCompletionPort = nullptr;
 	module gNetlibModule;
 	static bool gIsDone;
 	static bool gShutdown;
@@ -32,6 +32,12 @@ namespace netlib
 		return gNetlibModule;
 	}
 
+	NETLIB_API module main_module()
+	{
+		return module(GetModuleHandle(NULL));
+	}
+
+#ifndef NETLIB_STATIC
 	extern "C"
 	BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
 	{
@@ -40,6 +46,7 @@ namespace netlib
 
 		return TRUE;
 	}
+#endif
 
 	static inline void setup_time()
 	{
@@ -73,6 +80,9 @@ namespace netlib
 	{
 		gIsDone = false;
 		gRetVal = 0;
+
+		if(!gNetlibModule.valid())
+			gNetlibModule = module(GetModuleHandle(NULL));
 
 		gCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, (ULONG_PTR)0, 0);
 		if(!gCompletionPort)
@@ -143,7 +153,7 @@ namespace netlib
 				if(gCompletionPort)
 				{
 					CloseHandle(gCompletionPort);
-					gCompletionPort = NULL;
+					gCompletionPort = nullptr;
 				}
 
 				gShutdown = true;
@@ -154,7 +164,7 @@ namespace netlib
 
 		DWORD numDone = 0;
 		ULONG_PTR key;
-		iocp_async_state *state = NULL;
+		iocp_async_state *state = nullptr;
 
 		while(true)
 		{
@@ -194,7 +204,7 @@ namespace netlib
 			{
 				auto it = gMessageMap.find(msg.message);
 				if(it != gMessageMap.end())
-					it->second(msg.message, msg.lParam, msg.wParam);
+					it->second(msg.message, (int)msg.lParam, (int)msg.wParam);
 			}
 			else
 				DispatchMessage(&msg);

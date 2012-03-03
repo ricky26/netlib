@@ -28,8 +28,8 @@ namespace netlib
 			memset(&overlapped, 0, sizeof(overlapped));
 			error = 0;
 			amount = 0;
-			thread = NULL;
-			handler = NULL;
+			thread = nullptr;
+			handler = nullptr;
 		}
 
 		iocp_async_state(LARGE_INTEGER &_pos)
@@ -37,8 +37,8 @@ namespace netlib
 			memset(&overlapped, 0, sizeof(overlapped));
 			error = 0;
 			amount = 0;
-			thread = NULL;
-			handler = NULL;
+			thread = nullptr;
+			handler = nullptr;
 			
 			overlapped.Offset = _pos.LowPart;
 			overlapped.OffsetHigh = _pos.HighPart;

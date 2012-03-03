@@ -1,4 +1,5 @@
 #include "netlib.h"
+#include "file.h"
 #include <string>
 
 #pragma once
@@ -11,6 +12,7 @@ namespace netlib
 		module();
 		explicit module(void *_h); // From handle
 		module(module const& _mod);
+		module(module &&_mod);
 		module(std::string const& _name);
 		virtual ~module();
 
@@ -27,6 +29,8 @@ namespace netlib
 		{
 			return static_cast<T>(symbol(_nm));
 		}
+
+		file file() const;
 		
 		module &operator =(module const& _b);
 		NETLIB_INLINE bool operator ==(module const& _b) const { return mInternal == _b.mInternal; }
@@ -37,4 +41,5 @@ namespace netlib
 	};
 
 	NETLIB_API module netlib_module();
+	NETLIB_API module main_module();
 }

@@ -40,7 +40,7 @@ namespace netlib
 		if(mInternal)
 		{
 			sha1_internal *mi = sha1_internal::get(mInternal);
-			mInternal = NULL;
+			mInternal = nullptr;
 
 			if(mi->hash)
 				CryptDestroyHash(mi->hash);
@@ -80,7 +80,7 @@ namespace netlib
 		if(!mi || !mi->hash)
 			return false;
 
-		return CryptHashData(mi->hash, (const BYTE*)_ptr, _sz, 0) == TRUE;
+		return CryptHashData(mi->hash, (const BYTE*)_ptr, (DWORD)_sz, 0) == TRUE;
 	}
 
 	std::string sha1::compute()
@@ -92,7 +92,7 @@ namespace netlib
 		std::string ret;
 		ret.resize(20, 0);
 
-		DWORD len = ret.size();
+		DWORD len = (DWORD)ret.size();
 		if(!CryptGetHashParam(mi->hash, HP_HASHVAL, (BYTE*)ret.data(), &len, 0))
 			return std::string();
 
