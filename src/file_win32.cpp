@@ -63,6 +63,11 @@ namespace netlib
 		mInternal = new file_internal();
 		open(_path, _mode);
 	}
+	
+	file::file(void *_handle)
+	{
+		mInternal = new file_internal((HANDLE)_handle);
+	}
 
 	file::~file()
 	{

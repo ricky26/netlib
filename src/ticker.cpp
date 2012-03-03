@@ -5,13 +5,13 @@
 namespace netlib
 {
 	static ticker_list_t gTickers;
-	static critical_section gTickerCS;
+	static mutex gTickerCS;
 	
 	static atstart_list_t gAtStart;
-	static critical_section gAtStartCS;
+	static mutex gAtStartCS;
 
 	static atexit_list_t gAtExit;
-	static critical_section gAtExitCS;
+	static mutex gAtExitCS;
 	
 	NETLIB_API ticker_handle_t add_ticker(ticker_t const& _t)
 	{

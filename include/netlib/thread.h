@@ -76,7 +76,7 @@ namespace netlib
 	class NETLIB_API thread_condition
 	{
 	public:
-		friend class critical_section;
+		friend class mutex;
 
 		thread_condition();
 		virtual ~thread_condition();
@@ -85,11 +85,11 @@ namespace netlib
 		void *mInternal;
 	};
 	
-	class NETLIB_API critical_section
+	class NETLIB_API mutex
 	{
 	public:
-		critical_section();
-		virtual ~critical_section();
+		mutex();
+		virtual ~mutex();
 
 		bool try_lock();
 		void lock();
@@ -117,19 +117,5 @@ namespace netlib
 
 	private:
 		void *mInternal;
-	};
-
-	template<critical_section &cs>
-	struct NETLIB_API critical_lock
-	{
-		inline critical_lock()
-		{
-			cs.lock();
-		}
-
-		inline ~critical_lock()
-		{
-			cs.unlock();
-		}
 	};
 }

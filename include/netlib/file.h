@@ -40,6 +40,7 @@ namespace netlib
 		file(file const&);
 		file(file &&);
 		file(std::string const& _path, int _mode=mode_open|mode_read);
+		explicit file(void *_handle);
 		virtual ~file();
 
 		bool valid() const;

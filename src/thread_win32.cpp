@@ -208,37 +208,37 @@ namespace netlib
 	}
 
 	//
-	// critical_section
+	// mutex
 	//
 
-	critical_section::critical_section()
+	mutex::mutex()
 	{
 		mInternal = new CRITICAL_SECTION;
 		InitializeCriticalSection((CRITICAL_SECTION*)mInternal);
 	}
 
-	critical_section::~critical_section()
+	mutex::~mutex()
 	{
 		DeleteCriticalSection((CRITICAL_SECTION*)mInternal);
 		delete (CRITICAL_SECTION*)mInternal;
 	}
 
-	bool critical_section::try_lock()
+	bool mutex::try_lock()
 	{
 		return TryEnterCriticalSection((CRITICAL_SECTION*)mInternal) == TRUE;
 	}
 
-	void critical_section::lock()
+	void mutex::lock()
 	{
 		EnterCriticalSection((CRITICAL_SECTION*)mInternal);
 	}
 
-	void critical_section::unlock()
+	void mutex::unlock()
 	{
 		LeaveCriticalSection((CRITICAL_SECTION*)mInternal);
 	}
 
-	void critical_section::wait(thread_condition &_con)
+	void mutex::wait(thread_condition &_con)
 	{
 		SleepConditionVariableCS((CONDITION_VARIABLE*)&_con.mInternal,
 			(CRITICAL_SECTION*)mInternal, INFINITE);

@@ -149,8 +149,8 @@ namespace netlib
 		void stop();
 
 	private:
-		critical_section mLock;
-		critical_section mSleepLock;
+		mutex mLock;
+		mutex mSleepLock;
 		uthread::list_t mScheduled;
 		uthread::sleep_list_t mSleepers;
 	};
@@ -191,6 +191,6 @@ namespace netlib
 	private:
 		int mStatus;
 		std::list<element> mValues;
-		critical_section mLock;
+		mutex mLock;
 	};
 }
