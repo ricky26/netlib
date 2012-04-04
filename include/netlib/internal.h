@@ -35,6 +35,7 @@ namespace netlib
 	{
 	public:
 		internalized(internalized const& _b);
+		internalized(internalized &&);
 		~internalized();
 
 		internalized &operator =(internalized const& _b);

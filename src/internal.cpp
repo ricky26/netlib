@@ -18,10 +18,17 @@ namespace netlib
 		mInternal = i;
 	}
 	
+	internalized::internalized(internalized &&_b)
+		: mInternal(_b.mInternal)
+	{
+		_b.mInternal = nullptr;
+	}
+	
 	internalized::~internalized()
 	{
 		internal *i = get<internal>();
-		i->release();
+		if(i)
+			i->release();
 	}
 
 	internalized &internalized::operator =(internalized const& _b)
