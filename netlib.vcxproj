@@ -84,6 +84,8 @@
       <AdditionalIncludeDirectories>$(ProjectDir)/include/</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4996</DisableSpecificWarnings>
       <ExceptionHandling>Async</ExceptionHandling>
+      <AssemblerListingLocation>$(IntDir)/%(RelativeDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -101,6 +103,8 @@
       <AdditionalIncludeDirectories>$(ProjectDir)/include/</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4996</DisableSpecificWarnings>
       <ExceptionHandling>Async</ExceptionHandling>
+      <AssemblerListingLocation>$(IntDir)/%(RelativeDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -120,6 +124,8 @@
       <AdditionalIncludeDirectories>$(ProjectDir)/include/</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4996</DisableSpecificWarnings>
       <ExceptionHandling>Async</ExceptionHandling>
+      <AssemblerListingLocation>$(IntDir)/%(RelativeDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,6 +147,8 @@
       <AdditionalIncludeDirectories>$(ProjectDir)/include/</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4251;4996</DisableSpecificWarnings>
       <ExceptionHandling>Async</ExceptionHandling>
+      <AssemblerListingLocation>$(IntDir)/%(RelativeDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
