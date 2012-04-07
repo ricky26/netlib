@@ -17,8 +17,8 @@ namespace netlib
 		std::string ret;
 		ret.resize((_str.length()*3)/2, 0);
 
-		DWORD outSize = ret.size();
-		if(CryptBinaryToStringA((const BYTE*)_str.data(), _str.size(),
+		DWORD outSize = (DWORD)ret.size();
+		if(CryptBinaryToStringA((const BYTE*)_str.data(), (DWORD)_str.size(),
 			CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, (char*)ret.data(), &outSize) != TRUE)
 			return std::string();
 
@@ -35,8 +35,8 @@ namespace netlib
 		std::string ret;
 		ret.resize((_str.length()*2)/3, 0);
 
-		DWORD outSize = ret.size();
-		if(CryptStringToBinaryA(_str.data(), _str.size(),
+		DWORD outSize = (DWORD)ret.size();
+		if(CryptStringToBinaryA(_str.data(), (DWORD)_str.size(),
 			CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, (BYTE*)ret.data(), &outSize, NULL, NULL) != TRUE)
 			return std::string();
 

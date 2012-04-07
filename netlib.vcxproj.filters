@@ -99,6 +99,9 @@
     <ClCompile Include="src\internal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\i18n_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\netlib\socket.h">
@@ -198,6 +201,9 @@
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
     <ClInclude Include="include\netlib\compiler.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\netlib\i18n.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
   </ItemGroup>
