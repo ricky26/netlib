@@ -83,6 +83,36 @@ namespace netlib
 	}
 
 	//
+	// uthreadqueue
+	//
+
+	uthreadqueue::~uthreadqueue()
+	{
+		while(!empty())
+		{
+			uthread::handle_t thr = front();
+			pop_front();
+
+			std::runtime_error err("queue destroyed");
+			thr->raise(err);
+		}
+	}
+
+	void uthreadqueue::resume_back()
+	{
+		uthread::handle_t thr = back();
+		pop_back();
+		thr->resume();
+	}
+
+	void uthreadqueue::resume_front()
+	{
+		uthread::handle_t thr = front();
+		pop_front();
+		thr->resume();
+	}
+
+	//
 	// scheduler
 	//
 

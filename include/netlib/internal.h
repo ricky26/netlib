@@ -29,6 +29,16 @@ namespace netlib
 			_ptr = ret;
 			return ret;
 		}
+
+		template<typename T>
+		static inline void destroy(void *&_ptr)
+		{
+			if(sizeof(T) == sizeof(void*))
+				return static_cast<T*>(
+					static_cast<void*>(&_ptr))->~T();
+
+			delete static_cast<T*>(_ptr);
+		}
 	};
 
 	class NETLIB_API internalized
@@ -52,10 +62,18 @@ namespace netlib
 		}
 
 		template<typename T>
+		inline void destroy()
+		{
+			internal::destroy<T>(mInternal);
+		}
+
+		template<typename T>
 		inline T *get() const
 		{
 			return internal::get<T>((void*&)mInternal);
 		}
+
+		inline void *get() const { return mInternal; }
 
 	private:
 		void *mInternal;
