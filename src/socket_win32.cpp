@@ -166,14 +166,21 @@ namespace netlib
 	
 	bool socket::connect(std::string const& _host, int _port)
 	{
-		if(!valid())
-			return false;
-
 		socket_internal *si = socket_internal::get(mInternal);
-
-		hostent *he = gethostbyname(_host.c_str());
-		if(!he)
+		if(!si || si->handle == INVALID_SOCKET)
 			return false;
+		
+		sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_addr.s_addr = inet_addr(_host.c_str());
+		if(addr.sin_addr.s_addr == INADDR_NONE)
+		{
+			hostent *he = gethostbyname(_host.c_str());
+			if(!he)
+				return false;
+
+			memcpy((char*)&addr.sin_addr.s_addr, (char*)he->h_addr, he->h_length);
+		}
 
 		// Find ConnectEx pointer!
 
@@ -206,11 +213,7 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		sockaddr_in addr;
-		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
-		addr.sin_addr.s_addr = *((uint32_t*)he->h_addr_list[0]);
-		memcpy((char*)he->h_addr, (char*)&addr.sin_addr.s_addr, he->h_length);
 		addr.sin_port = htons(_port);
 
 		if(si->connectEx(si->handle, (sockaddr*)&addr,

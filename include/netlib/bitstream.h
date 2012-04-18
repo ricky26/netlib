@@ -36,7 +36,7 @@ namespace netlib
 		virtual size_t write(std::string const& _str);
 
 		template<typename T>
-		size_t write(T &_out)
+		size_t write(T const& _out)
 		{
 			return write(&_out, sizeof(_out));
 		}
@@ -47,7 +47,7 @@ namespace netlib
 		virtual bool write_block(std::string const& _str);
 
 		template<typename T>
-		bool write_block(T &_out)
+		bool write_block(T const& _out)
 		{
 			return write_block(&_out, sizeof(_out));
 		}

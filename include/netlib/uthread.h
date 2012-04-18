@@ -125,6 +125,15 @@ namespace netlib
 		run_t mRun;
 	};
 
+	class NETLIB_API uthreadqueue: public std::list<uthread::handle_t>
+	{
+	public:
+		~uthreadqueue();
+
+		void resume_back();
+		void resume_front();
+	};
+
 	class NETLIB_API scheduler: public ref_counted
 	{
 	public:
