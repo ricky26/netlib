@@ -1,5 +1,6 @@
 #include "thread_wrapper.h"
 #include "ref_counted.h"
+#include "lock.h"
 
 #pragma once
 
@@ -115,7 +116,40 @@ namespace netlib
 		void lock_write();
 		void unlock_write();
 
+		class read_lock
+		{
+		public:
+			rw_lock &lck;
+
+			inline read_lock(rw_lock &_lock): lck(_lock) {}
+			
+			inline bool try_lock() { return lck.try_lock_read(); }
+			inline void lock() { return lck.lock_read(); }
+			inline void unlock() { return lck.unlock_read(); }
+		};
+		inline read_lock read() { return read_lock(*this); }
+
+		class write_lock
+		{
+		public:
+			rw_lock &lck;
+
+			inline write_lock(rw_lock &_lock): lck(_lock) {}
+			
+			inline bool try_lock() { return lck.try_lock_write(); }
+			inline void lock() { return lck.lock_write(); }
+			inline void unlock() { return lck.unlock_write(); }
+		};
+		inline write_lock write() { return write_lock(*this); }
+
 	private:
 		void *mInternal;
 	};
+	
+	template<> struct lock_holder<mutex>: lock_holder_base<mutex>
+		{ inline lock_holder(mutex &_m): lock_holder_base(_m) {}};
+	template<> struct lock_holder<rw_lock::read_lock>: lock_holder_base<rw_lock::read_lock>
+		{ inline lock_holder(rw_lock::read_lock &_m): lock_holder_base(_m) {}};
+	template<> struct lock_holder<rw_lock::write_lock>: lock_holder_base<rw_lock::write_lock>
+		{ inline lock_holder(rw_lock::write_lock &_m): lock_holder_base(_m) {}};
 }

@@ -206,6 +206,9 @@
     <ClInclude Include="include\netlib\i18n.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
+    <ClInclude Include="include\netlib\lock.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="netlib.rc">

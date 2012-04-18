@@ -28,10 +28,14 @@
 #	define NETLIB_THREAD		__thread
 #endif
 
+#ifdef NETLIB_STATIC
+#	define NETLIB_API
+#else
 #ifdef NETLIB_EXPORTS
 #	define NETLIB_API			NETLIB_API_EXPORT
 #else
 #	define NETLIB_API			NETLIB_API_IMPORT
+#endif
 #endif
 
 #define NETLIB_ATOMIC			NETLIB_API NETLIB_INLINE 
