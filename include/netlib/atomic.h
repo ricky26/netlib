@@ -20,7 +20,7 @@ namespace netlib
 		inline uint64_t increment(uint64_t *_ptr) { return _InterlockedIncrement64((volatile long long*)_ptr); }
 
 		/** Decrement an integer atomically. */
-		inline uint64_t decrement(uint64_t *_ptr) { return _InterlockedIncrement64((volatile long long*)_ptr); }
+		inline uint64_t decrement(uint64_t *_ptr) { return _InterlockedDecrement64((volatile long long*)_ptr); }
 #endif
 	}
 }

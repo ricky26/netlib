@@ -80,7 +80,9 @@ namespace netlib
 	{
 		gIsDone = false;
 		gRetVal = 0;
-
+		
+		CoInitializeEx(NULL, COINIT_MULTITHREADED);
+		
 		if(!gNetlibModule.valid())
 			gNetlibModule = module(GetModuleHandle(NULL));
 
@@ -156,6 +158,8 @@ namespace netlib
 					gCompletionPort = nullptr;
 				}
 
+				CoUninitialize();
+
 				gShutdown = true;
 			}
 
@@ -165,9 +169,18 @@ namespace netlib
 		DWORD numDone = 0;
 		ULONG_PTR key;
 		iocp_async_state *state = nullptr;
+		MSG msg;
 
 		while(true)
 		{
+			bool done = true;
+
+			if(thread::current() == gTimeThread)
+			{
+				if(!update_time())
+					return false;
+			}
+
 			if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
 				(OVERLAPPED**)&state, 0) == TRUE)
 			{
@@ -190,31 +203,30 @@ namespace netlib
 					state->thread->resume();
 			}
 			else
+				done = false;
+
+			if(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
+			{
+				TranslateMessage(&msg);
+				if(!msg.hwnd)
+				{
+					auto it = gMessageMap.find(msg.message);
+					if(it != gMessageMap.end())
+						it->second(msg.message, (int)msg.lParam, (int)msg.wParam);
+				}
+				else
+					DispatchMessage(&msg);
+
+				done = true;
+			}
+
+			if(!uthread::schedule())
+				SleepEx(0, TRUE); // TODO: Find a better value for this?
+
+			if(!done)
 				break;
 		}
 
-		if(!uthread::schedule())
-			SleepEx(0, TRUE); // TODO: Find a better value for this?
-
-		MSG msg;
-		while(PeekMessage(&msg, NULL, 0, 0, 1) == TRUE)
-		{
-			TranslateMessage(&msg);
-			if(!msg.hwnd)
-			{
-				auto it = gMessageMap.find(msg.message);
-				if(it != gMessageMap.end())
-					it->second(msg.message, (int)msg.lParam, (int)msg.wParam);
-			}
-			else
-				DispatchMessage(&msg);
-		}
-
-		if(thread::current() == gTimeThread)
-		{
-			if(!update_time())
-				return false;
-		}
 
 		return true;
 	}

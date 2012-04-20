@@ -169,7 +169,7 @@ namespace netlib
 			ReadFile(fi->handle, _buffer, (DWORD)_amt,
 				&state.amount, &state.overlapped);
 
-				fi->position.QuadPart += state.amount;
+			fi->position.QuadPart += state.amount;
 			try
 			{
 				uthread::suspend();
@@ -526,7 +526,7 @@ namespace netlib
 		if(ReadDirectoryChangesW(di->handle, di->buffer, sizeof(di->buffer), TRUE,
 			FILE_NOTIFY_CHANGE_FILE_NAME
 			| FILE_NOTIFY_CHANGE_DIR_NAME
-			| FILE_NOTIFY_CHANGE_SIZE
+			//| FILE_NOTIFY_CHANGE_SIZE
 			| FILE_NOTIFY_CHANGE_LAST_WRITE
 			| FILE_NOTIFY_CHANGE_CREATION, nullptr, &state.overlapped, nullptr) == FALSE)
 		{

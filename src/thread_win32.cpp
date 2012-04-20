@@ -82,7 +82,7 @@ namespace netlib
 				break;
 
 			default:
-				throw std::exception("low level exception");
+				//throw std::exception("low level exception");
 				break;
 			}
 
