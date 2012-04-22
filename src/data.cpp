@@ -4,7 +4,7 @@
 
 namespace netlib
 {
-	data data::copy(void *_data, size_t _sz)
+	data::handle_t data::copy(void *_data, size_t _sz)
 	{
 		void *p = std::malloc(_sz);
 		if(!p)
@@ -12,6 +12,6 @@ namespace netlib
 
 		std::memcpy(p, _data, _sz);
 
-		return data(p, _sz);
+		return new data(p, _sz);
 	}
 }

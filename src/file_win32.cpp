@@ -524,11 +524,11 @@ namespace netlib
 		state.thread = uthread::current();
 
 		if(ReadDirectoryChangesW(di->handle, di->buffer, sizeof(di->buffer), TRUE,
-			FILE_NOTIFY_CHANGE_FILE_NAME
-			| FILE_NOTIFY_CHANGE_DIR_NAME
+			//FILE_NOTIFY_CHANGE_FILE_NAME
+			//| FILE_NOTIFY_CHANGE_DIR_NAME
 			//| FILE_NOTIFY_CHANGE_SIZE
-			| FILE_NOTIFY_CHANGE_LAST_WRITE
-			| FILE_NOTIFY_CHANGE_CREATION, nullptr, &state.overlapped, nullptr) == FALSE)
+			/*|*/ FILE_NOTIFY_CHANGE_LAST_WRITE
+			/*| FILE_NOTIFY_CHANGE_CREATION*/, nullptr, &state.overlapped, nullptr) == FALSE)
 		{
 			int err = GetLastError();
 			std::cerr << "ERR: " << err << std::endl;

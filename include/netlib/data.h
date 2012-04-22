@@ -16,34 +16,36 @@ namespace netlib
 		NETLIB_INLINE data() : mData(nullptr), mSize(0), mFn(nullptr) {}
 		NETLIB_INLINE data(data &&_d): mData(_d.mData), mSize(_d.mSize), mFn(_d.mFn)
 		{
-			_d.clear();
+			_d.clear_data();
 		}
 
 		NETLIB_INLINE data(handle_t const& _h) : mData(_h->mData), mSize(_h->mSize),
 			mFn(_h->mFn)
 		{
-			_h->clear();
+			_h->clear_data();
 		}
 
 		NETLIB_INLINE data(void *_ptr, size_t _sz, delete_fn_t _fn=&std::free)
 			: mData(_ptr), mSize(_sz), mFn(_fn) {}
 
-		NETLIB_INLINE ~data() { release(); }
+		NETLIB_INLINE ~data() { release_data(); }
+
+		NETLIB_INLINE bool valid() const { return mData != nullptr; }
 		
 		NETLIB_INLINE void set(data &&_d)
 		{
 			set(_d.ptr(), _d.size(), _d.delete_function());
-			_d.clear();
+			_d.clear_data();
 		}
 
 		NETLIB_INLINE void set(handle_t const& _d)
 		{
 			set(_d->ptr(), _d->size(), _d->delete_function());
-			_d->clear();
+			_d->clear_data();
 		}
 
 		NETLIB_INLINE void set(void *_ptr, size_t _sz, delete_fn_t _fn=&std::free)
-			{ release(); mData = _ptr; mSize = _sz; mFn = _fn; }
+			{ release_data(); mData = _ptr; mSize = _sz; mFn = _fn; }
 		NETLIB_INLINE void set_static(void *_ptr, size_t _sz) { set(_ptr, _sz, &data::no_free); }
 
 		NETLIB_INLINE void *ptr() const { return mData; }
@@ -61,24 +63,23 @@ namespace netlib
 			return data(_data, _sz, &data::no_free);
 		}
 
-		static data copy(void *_data, size_t _sz);
+		static handle_t copy(void *_data, size_t _sz);
 
 	protected:
 		data(data const&);
 
-		inline void clear()
+		inline void clear_data()
 		{
 			mData = nullptr;
 			mSize = 0;
-			mFn = nullptr;
 		}
 
-		inline void release()
+		inline void release_data()
 		{
 			if(mData)
 			{
 				mFn(mData);
-				clear();
+				clear_data();
 			}
 		}
 
