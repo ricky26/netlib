@@ -9,6 +9,7 @@
 #include "netlib/win32.h"
 #include "netlib_win32.h"
 #include <unordered_map>
+#include <iostream>
 
 namespace netlib
 {	
@@ -26,6 +27,35 @@ namespace netlib
 	typedef std::unordered_map<int, message_handler_t> msg_map_t;
 	static msg_map_t gMessageMap;
 	NETLIB_API void atexit(atexit_t const& _ae);
+
+	static void default_unhandled()
+	{
+		std::cerr << "Unhandled exception!" << std::endl;
+
+		try
+		{
+			uthread::exit();
+		}
+		catch(...)
+		{
+			try
+			{
+				thread::exit();
+			}
+			catch(...)
+			{
+				netlib::exit(-1);
+			}
+		}
+	}
+
+	static LONG WINAPI UnhandledExceptionHandler(
+		__in struct _EXCEPTION_POINTERS *ExceptionInfo
+    )
+	{
+		default_unhandled();
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
 
 	NETLIB_API module netlib_module()
 	{
@@ -81,6 +111,8 @@ namespace netlib
 		gIsDone = false;
 		gRetVal = 0;
 		
+		set_unexpected(default_unhandled);
+		SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 		CoInitializeEx(NULL, COINIT_MULTITHREADED);
 		
 		if(!gNetlibModule.valid())

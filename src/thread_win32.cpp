@@ -19,25 +19,25 @@ namespace netlib
 	public:
 		thread_impl(thread_fn_t _fn, void *_arg)
 			: handle(NULL), function(_fn), argument(_arg)
-			, protection(0)
 		{
 		}
 
 		thread_impl(HANDLE _h)
 			: handle(_h), function(NULL), argument(NULL)
-			, protection(0)
 		{
 		}
 
 		static void setup()
 		{
-			AddVectoredExceptionHandler(TRUE, vectored_handler);
+			_set_se_translator(&seh_handler);
+			AddVectoredExceptionHandler(FALSE, vectored_handler);
 
 			if(!current)
 				current = new thread_impl(GetCurrentThread());
 			else
 				uthread::enable_uthread();
 
+			current->exc = nullptr;
 			current->acquire();
 		}
 
@@ -47,20 +47,45 @@ namespace netlib
 				current->release();
 		}
 
+		static void kill_thread()
+		{
+			try
+			{
+				uthread::exit();
+			}
+			catch(std::exception const&)
+			{
+				try
+				{
+					thread::exit();
+				}
+				catch(std::exception const&)
+				{
+					netlib::exit(-1);
+				}
+			}
+		}
+
 		static LONG CALLBACK vectored_handler(EXCEPTION_POINTERS *_ex)
 		{
-			int p = 0;
-			if(current)
-				p += current->protection;
-
-			uthread::handle_t c = uthread::current();
-			if(c.get())
-				p += c->protection();
-
-			if(current && IsDebuggerPresent() && p == 0)
+			if(!IsDebuggerPresent())
 				return EXCEPTION_CONTINUE_SEARCH;
 
-			switch(_ex->ExceptionRecord->ExceptionCode)
+			DebugBreak();
+			std::cerr << "Stepped over exception!" << std::endl;
+			
+#ifdef NETLIB_X64
+			_ex->ContextRecord->Rip = (DWORD64)&kill_thread;
+#else
+			_ex->ContextRecord->Eip = (DWORD)&kill_thread;
+#endif
+			return EXCEPTION_CONTINUE_EXECUTION;
+		}
+
+		static /*LONG CALLBACK*/ void seh_handler(unsigned int _code,
+			EXCEPTION_POINTERS *_ex)
+		{
+			switch(_code)
 			{
 			case EXCEPTION_ACCESS_VIOLATION:
 				throw std::exception("access violation");
@@ -78,22 +103,18 @@ namespace netlib
 				throw std::exception("breakpoint reached");
 				break;
 			
-			case CPP_EXCEPTION_CODE: // C++ exceptions can be dealt with.
-				break;
-
-			default:
-				//throw std::exception("low level exception");
-				break;
+			/*default:
+				return EXCEPTION_CONTINUE_SEARCH;*/
 			}
 
-			return EXCEPTION_EXECUTE_HANDLER;
+			//return EXCEPTION_EXECUTE_HANDLER;
 		}
 
 		static __declspec(thread) thread_impl *current;
 		thread_fn_t function;
 		void *argument;
 		HANDLE handle;
-		int protection;
+		EXCEPTION_POINTERS *exc;
 	};
 
 	thread_impl *thread_impl::current = NULL;
@@ -115,32 +136,16 @@ namespace netlib
 		DWORD ret = WaitForSingleObject(((thread_impl*)this)->handle, INFINITE);
 		return ret == WAIT_OBJECT_0;
 	}
+		
+	void thread::exit()
+	{
+		if(!TerminateThread(GetCurrentThread(), -1))
+			throw std::runtime_error("failed to kill thread");
+	}
 
 	void thread::sleep(int _ms)
 	{
 		Sleep(_ms);
-	}
-
-	int thread::protection() const
-	{
-		return ((thread_impl*)this)->protection;
-	}
-
-	int thread::protect()
-	{
-		return ++thread_impl::current->protection;
-	}
-
-	int thread::unprotect()
-	{
-		int ret = thread_impl::current->protection;
-		if(ret > 0)
-		{
-			ret--;
-			thread_impl::current->protection = ret;
-		}
-
-		return ret;
 	}
 	
 	thread::handle_t thread::current()

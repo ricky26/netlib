@@ -30,7 +30,6 @@ namespace netlib
 			acquire();
 
 			mScheduler = NULL;
-			mProtection = 0;
 			mThread = thread::current();
 			mSuspended = mDead = false;
 
@@ -45,7 +44,6 @@ namespace netlib
 			acquire();
 
 			mScheduler = NULL;
-			mProtection = 0;
 			mThread = NULL;
 			mSuspended = mDead = false;
 
@@ -148,33 +146,32 @@ namespace netlib
 		return true;
 	}
 
+	struct uthread_safestart
+	{
+		uthread_impl *impl;
+
+		uthread_safestart(uthread_impl *_impl): impl(_impl)
+		{
+		}
+
+		void start()
+		{
+			impl->start(impl->argument);
+		}
+
+		~uthread_safestart()
+		{
+			uthread::exit();
+		}
+	};
+
 	static void uthread_fiber_start(void *_param)
 	{
 		uthread_impl::after_swap();
 		
 		uthread_impl *impl = static_cast<uthread_impl*>(_param);
-		try
-		{
-			impl->start(impl->argument);
-		}
-		catch(std::exception const& _e)
-		{
-			std::cerr << "Exception occurred in uthread " 
-				<< impl << ": " << _e.what() << std::endl;
-
-			if(impl->protection() <= 0 && IsDebuggerPresent())
-				throw;
-		}
-		catch(...)
-		{
-			std::cerr << "Unknown exception occurred in uthread "
-				<< impl << std::endl;
-
-			if(impl->protection() <= 0 && IsDebuggerPresent())
-				throw;
-		}
-
-		uthread::exit();
+		uthread_safestart ss(impl);
+		ss.start();
 	}
 
 	uthread::handle_t uthread::create(uthread_start_t _start, void *_param)
@@ -197,7 +194,7 @@ namespace netlib
 		impl->mDead = true;
 		impl->suspend();
 
-		throw std::exception("Dead uthread resumed!");
+		throw std::runtime_error("Dead uthread resumed!");
 	}
 
 	bool uthread::init()

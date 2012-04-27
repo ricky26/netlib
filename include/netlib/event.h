@@ -33,7 +33,7 @@ namespace netlib
 		{
 			for(auto it = handlers.begin(); it != handlers.end(); it++)
 			{
-				if((*it)(_evt))
+				if(*it && (*it)(_evt))
 					return true;
 			}
 

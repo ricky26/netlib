@@ -14,7 +14,8 @@ namespace netlib
 	internalized::internalized(internalized const& _b)
 	{
 		internal *i = _b.get<internal>();
-		i->acquire();
+		if(i)
+			i->acquire();
 		mInternal = i;
 	}
 	
@@ -35,8 +36,13 @@ namespace netlib
 	{
 		internal *oi = get<internal>();
 		internal *i = _b.get<internal>();
-		i->acquire();
-		oi->release();
+
+		if(i)
+			i->acquire();
+
+		if(oi)
+			oi->release();
+
 		mInternal = i;
 		return *this;
 	}

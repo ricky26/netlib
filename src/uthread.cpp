@@ -6,21 +6,6 @@ namespace netlib
 	//
 	// uthread
 	//
-	
-	int uthread::protect()
-	{
-		handle_t thr = current();
-		return ++thr->mProtection;
-	}
-
-	int uthread::unprotect()
-	{
-		handle_t thr = current();
-		if(thr->mProtection == 0)
-			return 0;
-
-		return --thr->mProtection;
-	}
 
 	void uthread::schedule(netlib::scheduler *_sch)
 	{

@@ -98,10 +98,6 @@ namespace netlib
 		static void suspend();
 		static void exit();
 
-		NETLIB_INLINE int protection() const { return mProtection; }
-		static int protect();
-		static int unprotect();
-
 		// Set a specific thread to exclusively run this uthread.
 		NETLIB_INLINE handle<netlib::thread> thread() const { return mThread; }
 		void set_thread(handle<netlib::thread> const& _h);
@@ -121,7 +117,6 @@ namespace netlib
 		list_t::iterator mPosition;
 		sleep_list_t::iterator mSleepPosition;
 		netlib::scheduler *mScheduler;
-		int mProtection;
 		run_t mRun;
 	};
 

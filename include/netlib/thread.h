@@ -23,8 +23,6 @@ namespace netlib
 		static void sleep(int _ms);
 
 		int protection() const;
-		static int protect();
-		static int unprotect();
 		
 		static handle_t current();
 		static handle_t create(thread_fn_t _fn, void *_arg);

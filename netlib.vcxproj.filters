@@ -105,6 +105,12 @@
     <ClCompile Include="src\data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\exception.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\exception_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\netlib\socket.h">
@@ -210,6 +216,9 @@
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
     <ClInclude Include="include\netlib\lock.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\netlib\exception.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
   </ItemGroup>
