@@ -53,12 +53,13 @@ namespace netlib
 		NETLIB_INLINE bool operator !=(internalized const& _b) const { return mInternal != _b.mInternal; }
 
 	protected:
-		internalized(void *_internal);
+		inline internalized(): mInternal(nullptr) {}
+		internalized(internal *_internal);
 
 		template<typename T>
 		inline T *create()
 		{
-			return internal::create<T>(mInternal);
+			return internal::create<T>((void*&)mInternal);
 		}
 
 		template<typename T>
@@ -73,9 +74,11 @@ namespace netlib
 			return internal::get<T>((void*&)mInternal);
 		}
 
-		inline void *get() const { return mInternal; }
+		inline internal *get() const { return mInternal; }
+
+		void set(internal *_ptr);
 
 	private:
-		void *mInternal;
+		internal *mInternal;
 	};
 }

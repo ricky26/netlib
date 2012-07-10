@@ -6,7 +6,7 @@ namespace netlib
 	// internalized
 	//
 
-	internalized::internalized(void *_internal)
+	internalized::internalized(internal *_internal)
 		: mInternal(_internal)
 	{
 	}
@@ -45,5 +45,18 @@ namespace netlib
 
 		mInternal = i;
 		return *this;
+	}
+	
+	void internalized::set(internal *_ptr)
+	{
+		if(_ptr == mInternal)
+			return;
+
+		_ptr->acquire();
+
+		if(mInternal)
+			mInternal->release();
+
+		mInternal = _ptr;
 	}
 }
