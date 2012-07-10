@@ -8,12 +8,7 @@
 
 namespace netlib
 {
-	static __declspec(thread) scheduler *gThreadScheduler = NULL;
-	static __declspec(thread) PVOID uthread_exception_redir;
-
-	extern "C" void __stdcall _CxxThrowException(void* obj, void* info);
-
-	static uthread_impl *current()
+	static inline uthread_impl *current()
 	{
 		return (uthread_impl*)GetFiberData();
 	}
@@ -25,37 +20,57 @@ namespace netlib
 	class uthread_impl: public uthread
 	{
 	public:
-		uthread_impl()
+		uthread_impl(uthread_start_t _start=nullptr, void *_param=nullptr)
+			: fiber(nullptr),
+				start(_start),
+				argument(_param),
+				next(this),
+				prev(this)
 		{
 			acquire();
-
-			mScheduler = NULL;
-			mThread = thread::current();
-			mSuspended = mDead = false;
-
-			fiber = NULL;
-			start = NULL;
-			argument = NULL;
-			running = TRUE;
 		}
 
-		uthread_impl(uthread_start_t _start, void *_param)
+		inline bool single() const
 		{
+			return next == prev && next == this;
+		}
+
+		void insert(uthread_impl *_prev)
+		{
+			if(!single())
+				remove();
+			
 			acquire();
 
-			mScheduler = NULL;
-			mThread = NULL;
-			mSuspended = mDead = false;
+			uthread_impl *n = _prev->next;
+			prev = _prev;
+			next = n;
 
-			fiber = NULL;
-			start = _start;
-			argument = _param;
-			running = FALSE;
+			prev->next = this;
+			next->prev = this;
 		}
 
-		static void after_swap();
+		void remove()
+		{
+			uthread_impl *p = prev, *n = next;
+			p->next = n;
+			n->prev = p;
 
-		BOOL running;
+			release();
+		}
+
+		void destroy() override
+		{
+			uthread::destroy();
+		}
+
+		void swap_next();
+		void after_swap();
+
+		// Linked list
+		uthread_impl *prev, *next;
+
+		// uThread data
 		void *fiber;
 		uthread_start_t start;
 		void *argument;
@@ -65,84 +80,53 @@ namespace netlib
 	// uthread
 	//
 
-	uthread::uthread()
-	{
-	}
-
-	uthread::~uthread()
-	{
-	}
-
-	
-	void uthread::destroy()
-	{
-		acquire(); // Make sure it's not destroyed again.
-
-		uthread_impl *ui = static_cast<uthread_impl*>(this);
-		if(mScheduler)
-			mScheduler->remove(this);
-
-		delete ui;
-	}
-
 	uthread::handle_t uthread::current()
 	{
 		return ::netlib::current();
 	}
+
+	void uthread_impl::swap_next()
+	{
+		next->acquire();
+		SwitchToFiber(next->fiber);
+
+		::netlib::current()->after_swap();
+	}
 	
-	static __declspec(thread) uthread_impl *swapped_from, *swapped_to;
 	void uthread_impl::after_swap()
 	{
-		if(swapped_to->suspended())
+		prev->release();
+
+		if(mRun)
 		{
-			swapped_to->mSuspended = false;
-			swapped_to->acquire();
+			prev->insert(this);
+
+			mRun();
+			mRun = run_t();
+
+			swap_next();
 		}
-
-		swapped_from->release();
-
-		if(swapped_from->dead())
-		{
-			swapped_from->scheduler()->unschedule(swapped_from);
-			swapped_from->release();
-		}
-
-		InterlockedCompareExchangeRelease((LONG*)&swapped_from->running, FALSE, TRUE);
-
-		if(swapped_to->mRun)
-		{
-			swapped_to->mRun();
-			swapped_to->mRun = run_t();
-		}
-		
-		swapped_to->release();
-		swapped_from->release();
 	}
 		
 	bool uthread::swap(uthread *_other)
 	{
-		if(_other == ::netlib::current())
+		uthread_impl *cur = ::netlib::current();
+		if(_other == cur)
 			return true;
-
-		swapped_from = ::netlib::current();
-		swapped_to = (uthread_impl*)_other;
-
-		swapped_from->acquire();
-		swapped_to->acquire();
-
-		if(swapped_to->dead())
-			throw std::exception("Can't swap to dead thread!");
 		
-		BOOL ok = InterlockedCompareExchangeAcquire((LONG*)&swapped_to->running, TRUE, FALSE);
-		if(ok != FALSE)
+		uthread_impl *impl = static_cast<uthread_impl*>(_other);
+		impl->insert(cur);
+		cur->swap_next();
+		return true;
+	}
+
+	bool uthread::schedule()
+	{
+		uthread_impl *cur = ::netlib::current();
+		if(cur->single())
 			return false;
 
-		swapped_to->scheduler()->unschedule(swapped_to);
-		if(!swapped_from->suspended())
-			swapped_from->scheduler()->schedule(swapped_from);
-
-		SwitchToFiber(swapped_to->fiber);
-		uthread_impl::after_swap();
+		cur->swap_next();
 		return true;
 	}
 
@@ -151,10 +135,6 @@ namespace netlib
 		uthread_impl *impl;
 
 		uthread_safestart(uthread_impl *_impl): impl(_impl)
-		{
-		}
-
-		void start()
 		{
 			impl->start(impl->argument);
 		}
@@ -166,12 +146,10 @@ namespace netlib
 	};
 
 	static void uthread_fiber_start(void *_param)
-	{
-		uthread_impl::after_swap();
-		
+	{		
 		uthread_impl *impl = static_cast<uthread_impl*>(_param);
+		impl->after_swap();
 		uthread_safestart ss(impl);
-		ss.start();
 	}
 
 	uthread::handle_t uthread::create(uthread_start_t _start, void *_param)
@@ -184,41 +162,29 @@ namespace netlib
 			return NULL;
 
 		thr->fiber = fib;
-		thr->schedule(cur->scheduler());
+		thr->insert(cur);
 		return thr;
 	}
 	
 	void uthread::exit()
 	{
 		uthread_impl *impl = ::netlib::current();
-		impl->mDead = true;
+		impl->release();
 		impl->suspend();
-
 		throw std::runtime_error("Dead uthread resumed!");
 	}
 
 	bool uthread::init()
 	{
-		enable_uthread();
 		return true;
 	}
 
 	void uthread::shutdown()
 	{
-		// TODO: this needs to be done
-		// for every thread. >_>
-		if(gThreadScheduler)
-		{
-			gThreadScheduler->stop();
-			gThreadScheduler->release();
-		}
 	}
 	
-	void uthread::enable_uthread()
+	void uthread::enter_thread()
 	{
-		gThreadScheduler = new netlib::scheduler();
-		gThreadScheduler->acquire();
-
 		uthread_impl *impl = new uthread_impl();
 		void *f = ConvertThreadToFiber(impl);
 		if(!f)
@@ -229,8 +195,13 @@ namespace netlib
 		}
 
 		impl->fiber = f;
-		impl->mScheduler = gThreadScheduler;
-		impl->mPosition = gThreadScheduler->mScheduled.end();
-		impl->mSleepPosition = gThreadScheduler->mSleepers.end();
+		impl->acquire();
+
+		enter_thread_common();
+	}
+
+	void uthread::exit_thread()
+	{
+		exit_thread_common();
 	}
 }

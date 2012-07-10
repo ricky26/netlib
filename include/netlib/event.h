@@ -33,7 +33,20 @@ namespace netlib
 		{
 			for(auto it = handlers.begin(); it != handlers.end(); it++)
 			{
-				if(*it && (*it)(_evt))
+				handler_t h = *it;
+
+				if(!h)
+				{
+					auto it2 = it;
+					it2++;
+
+					handlers.erase(it);
+					
+					if(it2 == handlers.end())
+						break;
+				}
+
+				if(h(_evt))
 					return true;
 			}
 

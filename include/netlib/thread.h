@@ -20,9 +20,8 @@ namespace netlib
 
 		bool join();
 		static void exit();
+		static void schedule();
 		static void sleep(int _ms);
-
-		int protection() const;
 		
 		static handle_t current();
 		static handle_t create(thread_fn_t _fn, void *_arg);

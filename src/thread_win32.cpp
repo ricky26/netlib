@@ -17,32 +17,30 @@ namespace netlib
 	class thread_impl: public thread
 	{
 	public:
-		thread_impl(thread_fn_t _fn, void *_arg)
-			: handle(NULL), function(_fn), argument(_arg)
+		thread_impl(thread_fn_t _fn=nullptr, void *_arg=nullptr,
+			HANDLE _h=nullptr)
+			: function(_fn), argument(_arg), handle(_h)
 		{
-		}
-
-		thread_impl(HANDLE _h)
-			: handle(_h), function(NULL), argument(NULL)
-		{
+			acquire();
 		}
 
 		static void setup()
 		{
 			_set_se_translator(&seh_handler);
-			AddVectoredExceptionHandler(FALSE, vectored_handler);
 
 			if(!current)
-				current = new thread_impl(GetCurrentThread());
-			else
-				uthread::enable_uthread();
+				current = new thread_impl(nullptr, nullptr, GetCurrentThread());
 
 			current->exc = nullptr;
 			current->acquire();
+
+			uthread::enter_thread();
 		}
 
 		static void cleanup()
 		{
+			uthread::exit_thread();
+
 			if(current)
 				current->release();
 		}
@@ -66,23 +64,7 @@ namespace netlib
 			}
 		}
 
-		static LONG CALLBACK vectored_handler(EXCEPTION_POINTERS *_ex)
-		{
-			if(!IsDebuggerPresent())
-				return EXCEPTION_CONTINUE_SEARCH;
-
-			DebugBreak();
-			std::cerr << "Stepped over exception!" << std::endl;
-			
-#ifdef NETLIB_X64
-			_ex->ContextRecord->Rip = (DWORD64)&kill_thread;
-#else
-			_ex->ContextRecord->Eip = (DWORD)&kill_thread;
-#endif
-			return EXCEPTION_CONTINUE_EXECUTION;
-		}
-
-		static /*LONG CALLBACK*/ void seh_handler(unsigned int _code,
+		static void seh_handler(unsigned int _code,
 			EXCEPTION_POINTERS *_ex)
 		{
 			switch(_code)
@@ -103,12 +85,12 @@ namespace netlib
 				throw std::exception("breakpoint reached");
 				break;
 			
-			/*default:
-				return EXCEPTION_CONTINUE_SEARCH;*/
+			default:
+				throw std::runtime_error("runtime exception");
 			}
-
-			//return EXCEPTION_EXECUTE_HANDLER;
 		}
+
+		static DWORD WINAPI thread_impl::thread_proc(void *_param);
 
 		static __declspec(thread) thread_impl *current;
 		thread_fn_t function;
@@ -142,6 +124,11 @@ namespace netlib
 		if(!TerminateThread(GetCurrentThread(), -1))
 			throw std::runtime_error("failed to kill thread");
 	}
+	
+	void thread::schedule()
+	{
+		SleepEx(0, TRUE);
+	}
 
 	void thread::sleep(int _ms)
 	{
@@ -153,33 +140,35 @@ namespace netlib
 		return thread_impl::current;
 	}
 
-	static DWORD WINAPI ThreadProc(void *_param)
+	struct thread_safestart
+	{
+		thread_impl *impl;
+
+		thread_safestart(thread_impl *_impl): impl(_impl)
+		{
+			thread_impl::setup();
+			impl->function(impl->argument);
+		}
+
+		~thread_safestart()
+		{
+			thread_impl::cleanup();
+		}
+	};
+
+	DWORD WINAPI thread_impl::thread_proc(void *_param)
 	{
 		thread_impl *ths = (thread_impl*)_param;
-		ths->current = ths;
-		
-		int ret = 0;
+		current = ths;
 
-		thread_impl::setup();
-		ths->release(); // acquire in create
-		try
-		{
-			ths->function(ths->argument);
-		}
-		catch(std::exception const& _e)
-		{
-			std::cerr << "Exception occurred in thread "
-				<< ths << ": " << _e.what() << std::endl;
-		}
-		thread_impl::cleanup();
-
-		return (DWORD)ret;
+		thread_safestart ss(ths);
+		return 0;
 	}
 
 	thread::handle_t thread::create(thread_fn_t _fn, void *_arg)
 	{
 		thread_impl *ret = new thread_impl(_fn, _arg);
-		HANDLE hThread = CreateThread(NULL, 0, &ThreadProc, ret, 0, NULL);
+		HANDLE hThread = CreateThread(NULL, 0, &thread_impl::thread_proc, ret, 0, NULL);
 		if(!hThread)
 			return NULL;
 
