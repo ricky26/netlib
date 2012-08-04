@@ -71,6 +71,8 @@ namespace netlib
 			void *ptr = new wrap_t(_fn, _1, _2, _3, _4);
 			return create(wrap_t::run, ptr);
 		}
+
+		inline bool suspended() const { return mSuspended; }
 		
 		static bool swap(uthread *_other);
 		
@@ -93,10 +95,12 @@ namespace netlib
 			create([_ms, _fn]() { sleep(_ms); _fn(); });
 		}
 
+		void suspend();
+		void suspend(run_t const& _run);
+		void exit();
+
 		static bool schedule();
 		static void sleep(int _ms);
-		static void suspend();
-		static void exit();
 
 		static bool init();
 		static void shutdown();
@@ -108,13 +112,13 @@ namespace netlib
 		static void enter_thread();
 		static void exit_thread();
 
-	private:
+	protected:
 		static void enter_thread_common();
 		static void exit_thread_common();
 
-		uthread() {};
+		uthread() : mSuspended(false), mDead(false) {};
 
-		bool mSuspended;
+		bool mSuspended, mDead;
 		run_t mRun;
 	};
 

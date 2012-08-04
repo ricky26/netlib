@@ -21,7 +21,6 @@ namespace netlib
 		DWORD error;
 		DWORD amount;
 		uthread::handle_t thread;
-		iocp_async_state_handler_t handler;
 
 		iocp_async_state()
 		{
@@ -29,7 +28,6 @@ namespace netlib
 			error = 0;
 			amount = 0;
 			thread = nullptr;
-			handler = nullptr;
 		}
 
 		iocp_async_state(LARGE_INTEGER &_pos)
@@ -38,7 +36,6 @@ namespace netlib
 			error = 0;
 			amount = 0;
 			thread = nullptr;
-			handler = nullptr;
 			
 			overlapped.Offset = _pos.LowPart;
 			overlapped.OffsetHigh = _pos.HighPart;

@@ -11,6 +11,11 @@ namespace netlib
 	{
 	public:
 		typedef int64_t seek_pos_t;
+		
+		using bitstream::read;
+		using bitstream::read_block;
+		using bitstream::write;
+		using bitstream::write_block;
 
 		enum mode_t
 		{

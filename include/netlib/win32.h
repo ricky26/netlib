@@ -10,4 +10,6 @@ namespace netlib
 
 	NETLIB_API bool register_message_handler(int _msg, message_handler_t const& _hdlr);
 	NETLIB_API void remove_message_handler(int _msg);
+
+	NETLIB_API HANDLE completion_port();
 }

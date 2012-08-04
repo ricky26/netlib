@@ -37,17 +37,17 @@ namespace netlib
 
 		void insert(uthread_impl *_prev)
 		{
+			if(_prev->next == this)
+				return;
+
 			if(!single())
 				remove();
-			
-			acquire();
 
 			uthread_impl *n = _prev->next;
 			prev = _prev;
 			next = n;
 
-			prev->next = this;
-			next->prev = this;
+			prev->next = next->prev = this;
 		}
 
 		void remove()
@@ -56,12 +56,25 @@ namespace netlib
 			p->next = n;
 			n->prev = p;
 
-			release();
+			prev = next = this;
 		}
 
 		void destroy() override
 		{
+			remove();
+
 			uthread::destroy();
+		}
+
+		void do_run()
+		{
+			if(mRun)
+			{
+				run_t r = mRun;
+				mRun = run_t();
+
+				r();
+			}
 		}
 
 		void swap_next();
@@ -87,25 +100,25 @@ namespace netlib
 
 	void uthread_impl::swap_next()
 	{
-		next->acquire();
 		SwitchToFiber(next->fiber);
-
 		::netlib::current()->after_swap();
 	}
 	
 	void uthread_impl::after_swap()
 	{
-		prev->release();
+		uthread_impl *p = prev;
 
-		if(mRun)
+		if(p->mSuspended)
 		{
-			prev->insert(this);
-
-			mRun();
-			mRun = run_t();
-
-			swap_next();
+			p->remove();
+			p->do_run();
+			p->release();
 		}
+
+		if(mDead)
+			throw std::runtime_error("Dead uthread resumed!");
+		else
+			do_run();
 	}
 		
 	bool uthread::swap(uthread *_other)
@@ -115,6 +128,12 @@ namespace netlib
 			return true;
 		
 		uthread_impl *impl = static_cast<uthread_impl*>(_other);
+		if(impl->mSuspended)
+		{
+			impl->mSuspended = false;
+			impl->acquire();
+		}
+
 		impl->insert(cur);
 		cur->swap_next();
 		return true;
@@ -130,48 +149,49 @@ namespace netlib
 		return true;
 	}
 
+	void uthread::suspend()
+	{
+		uthread_impl *ths = static_cast<uthread_impl*>(this);
+
+		mSuspended = true;
+		if(::netlib::current() == ths)
+		{
+			if(!schedule())
+				throw std::exception("Can't suspend last uthread!");
+		}
+		else
+			ths->remove();
+	}
+
 	struct uthread_safestart
 	{
-		uthread_impl *impl;
-
-		uthread_safestart(uthread_impl *_impl): impl(_impl)
-		{
-			impl->start(impl->argument);
-		}
-
 		~uthread_safestart()
 		{
-			uthread::exit();
+			uthread::current()->exit();
 		}
 	};
 
 	static void uthread_fiber_start(void *_param)
 	{		
 		uthread_impl *impl = static_cast<uthread_impl*>(_param);
+		uthread_safestart ss;
+
 		impl->after_swap();
-		uthread_safestart ss(impl);
+		impl->start(impl->argument);
 	}
 
 	uthread::handle_t uthread::create(uthread_start_t _start, void *_param)
 	{
 		uthread_impl *cur = ::netlib::current();
-		uthread_impl *thr = new uthread_impl(_start, _param);
+		handle<uthread_impl> thr = new uthread_impl(_start, _param);
 
-		void *fib = CreateFiber(0, (LPFIBER_START_ROUTINE)&uthread_fiber_start, thr);
+		void *fib = CreateFiber(0, (LPFIBER_START_ROUTINE)&uthread_fiber_start, thr.get());
 		if(!fib)
 			return NULL;
 
 		thr->fiber = fib;
-		thr->insert(cur);
-		return thr;
-	}
-	
-	void uthread::exit()
-	{
-		uthread_impl *impl = ::netlib::current();
-		impl->release();
-		impl->suspend();
-		throw std::runtime_error("Dead uthread resumed!");
+		swap(thr.get());
+		return thr.get();
 	}
 
 	bool uthread::init()
@@ -195,8 +215,6 @@ namespace netlib
 		}
 
 		impl->fiber = f;
-		impl->acquire();
-
 		enter_thread_common();
 	}
 

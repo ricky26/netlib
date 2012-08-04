@@ -16,17 +16,17 @@ namespace netlib
 	};
 
 	static NETLIB_THREAD thread_state *g_thread_state;
-
-	void uthread::suspend()
+	
+	void uthread::suspend(run_t const& _run)
 	{
-		// If we hold a handle over uthread::exit, we won't ever deallocate it! harhar!
-		uthread *thr = current().get();
-		thr->mSuspended = true;
-		if(!schedule())
-		{
-			throw std::exception("Can't suspend last uthread!");
-			thr->mSuspended = false;
-		}
+		mRun = _run;
+		suspend();
+	}
+	
+	void uthread::exit()
+	{
+		mDead = true;
+		suspend();
 	}
 
 	void uthread::resume()
@@ -61,7 +61,7 @@ namespace netlib
 		if(it == sleepers.end())
 			sleepers.push_back(sleeper);
 
-		uthread::suspend();
+		cur->suspend();
 	}
 	
 	void uthread::wake_sleepers()
@@ -125,7 +125,8 @@ namespace netlib
 			mValues.push_back(el);
 			mStatus++;
 			mLock.unlock();
-			uthread::suspend();
+
+			uthread::current()->suspend();
 		}
 		else
 		{
@@ -151,7 +152,8 @@ namespace netlib
 			mValues.push_back(el);
 			mStatus--;
 			mLock.unlock();
-			uthread::suspend();
+			
+			uthread::current()->suspend();
 		}
 		else
 		{

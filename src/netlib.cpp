@@ -3,21 +3,13 @@
 
 namespace netlib
 {
-	NETLIB_API int run_main(std::function<void()> const& _fn)
+	NETLIB_API void spawn_io_threads(int _count)
 	{
-		uthread::create([_fn]() {
-			try
-			{
-				_fn();
-				exit(0);
-			}
-			catch(std::exception const&)
-			{
-				exit(0);
-				throw;
-			}
-		});
-
-		return run_main_loop();
+		for(int i = 0; i < _count; i++)
+		{
+			thread::create([](){
+				run_main_loop();
+			});
+		}
 	}
 }

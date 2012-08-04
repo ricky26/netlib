@@ -215,25 +215,23 @@ namespace netlib
 
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(_port);
-
-		if(si->connectEx(si->handle, (sockaddr*)&addr,
-			sizeof(addr), NULL, 0, NULL,
-			&state.overlapped) == FALSE)
-		{
-			if(WSAGetLastError() == WSA_IO_PENDING)
+		
+		uthread::current()->suspend([&](){
+			if(si->connectEx(si->handle, (sockaddr*)&addr,
+				sizeof(addr), NULL, 0, NULL,
+				&state.overlapped) == FALSE)
 			{
-				uthread::suspend();
-				if(state.error != 0)
-					return false;
+				int error = WSAGetLastError();
+				if(error != WSA_IO_PENDING)
+				{
+					std::cerr << "ERR: " << error << std::endl;
+					state.error = error;
+					state.thread->resume();
+				}
 			}
-			else
-			{
-				std::cerr << "ERR: " << WSAGetLastError() << std::endl;
-				return false;
-			}
-		}
+		});
 
-		return true;
+		return state.error != 0;
 	}
 
 	bool socket::listen(int _port, int _amt)
@@ -286,25 +284,29 @@ namespace netlib
 				&dwBytes, NULL, NULL) == SOCKET_ERROR)
 			{
 				ret.close();
-				return ret;
+				return std::move(ret);
 			}
 		}
 		
-		if(si->acceptEx(si->handle, (SOCKET)ret.handle(), buf,
-			sizeof(buf) - ((sizeof(sockaddr_in) + 16) * 2),
-			sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
-			&state.amount, &state.overlapped) == FALSE)
-		{
-			if(WSAGetLastError() == WSA_IO_PENDING)
+		uthread::current()->suspend([&](){
+			if(si->acceptEx(si->handle, (SOCKET)ret.handle(), buf,
+				sizeof(buf) - ((sizeof(sockaddr_in) + 16) * 2),
+				sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
+				&state.amount, &state.overlapped) == FALSE)
 			{
-				state.thread = uthread::current();
-				uthread::suspend();
-				if(state.error != 0)
-					ret.close();
+				int error = WSAGetLastError();
+				if(error != WSA_IO_PENDING)
+				{
+					state.error = error;
+					state.thread->resume();
+				}
 			}
-		}
+		});
 
-		return ret;
+		if(state.error)
+			ret.close();
+
+		return std::move(ret);
 	}
 
 	void socket::close()
@@ -331,11 +333,12 @@ namespace netlib
 			buffers.buf = (CHAR*)_buffer;
 			buffers.len = (ULONG)_amt;
 			
-			WSARecv(si->handle, &buffers, 1, &state.amount, &flags, &state.overlapped, NULL);
-
 			try
 			{
-				uthread::suspend();
+				uthread::current()->suspend([&](){
+					WSARecv(si->handle, &buffers, 1, &state.amount,
+						&flags, &state.overlapped, NULL);
+				});
 			}
 			catch(std::exception const&)
 			{
@@ -371,11 +374,12 @@ namespace netlib
 			buffers.buf = (CHAR*)_buffer;
 			buffers.len = (ULONG)_amt;
 			
-			WSASend(si->handle, &buffers, 1, &state.amount, flags, &state.overlapped, NULL);
-
 			try
 			{
-				uthread::suspend();
+				uthread::current()->suspend([&](){
+					WSASend(si->handle, &buffers, 1, &state.amount,
+						flags, &state.overlapped, NULL);
+				});
 			}
 			catch(std::exception const&)
 			{

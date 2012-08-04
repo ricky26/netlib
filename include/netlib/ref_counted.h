@@ -30,7 +30,7 @@ namespace netlib
 
 		inline ref_count_t ref_count() { return mRefCount; }
 
-		inline netlib::weak_target *weak_target() const;
+		inline netlib::weak_target *weak_target();
 
 	protected:
 		virtual void destroy();
@@ -53,13 +53,13 @@ namespace netlib
 		ref_counted *mTarget;
 	};
 
-	weak_target *ref_counted::weak_target() const
+	weak_target *ref_counted::weak_target()
 	{
 		if(!mWeak)
 		{
-			netlib::weak_target *w = new netlib::weak_target((ref_counted*)this);
+			netlib::weak_target *w = new netlib::weak_target(this);
 			w->acquire();
-			(netlib::weak_target*&)mWeak = w;
+			mWeak = w;
 		}
 
 		return mWeak;
@@ -195,9 +195,9 @@ namespace netlib
 		inline weak_handle(): parent_t() {}
 		inline weak_handle(ptr_t _ptr): parent_t(_ptr->weak_target()) {}
 
-		inline ptr_t get() const
+		inline handle_t get() const
 		{
-			return parent_t::get()->target();
+			return handle_t(static_cast<ptr_t>(parent_t::get()->target()));
 		}
 
 		inline operator bool() const

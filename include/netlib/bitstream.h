@@ -20,6 +20,26 @@ namespace netlib
 			return read(&_out, sizeof(_out));
 		}
 
+		template<size_t BufferSize>
+		std::string read_all()
+		{
+			std::string ret;
+			ret.resize(BufferSize);
+
+			size_t amt;
+			while((amt = read(const_cast<char*>(ret.data()+ret.size()-BufferSize),
+				BufferSize)) > 0)
+				ret.resize(ret.size() + amt);
+
+			ret.resize(ret.size() - BufferSize);
+			return ret;
+		}
+
+		inline std::string read_all()
+		{
+			return read_all<16*1024>();
+		}
+
 		// read_block
 
 		virtual bool read_block(void *_buffer, size_t _amt);

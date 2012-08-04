@@ -49,7 +49,7 @@ namespace netlib
 		{
 			try
 			{
-				uthread::exit();
+				uthread::current()->exit();
 			}
 			catch(std::exception const&)
 			{
@@ -142,14 +142,6 @@ namespace netlib
 
 	struct thread_safestart
 	{
-		thread_impl *impl;
-
-		thread_safestart(thread_impl *_impl): impl(_impl)
-		{
-			thread_impl::setup();
-			impl->function(impl->argument);
-		}
-
 		~thread_safestart()
 		{
 			thread_impl::cleanup();
@@ -160,8 +152,10 @@ namespace netlib
 	{
 		thread_impl *ths = (thread_impl*)_param;
 		current = ths;
+		thread_safestart ss;
 
-		thread_safestart ss(ths);
+		thread_impl::setup();
+		ths->function(ths->argument);
 		return 0;
 	}
 

@@ -176,40 +176,28 @@ namespace netlib
 		{
 			iocp_async_state state;
 			state.thread = uthread::current();
-			ConnectNamedPipe(hPipe, &state.overlapped);
-
-			bool success = false;
-			switch(GetLastError())
+			
+			try
 			{
-			case ERROR_PIPE_CONNECTED:
-				// We connected, yay!
-				success = true;
-				break;
-
-			case ERROR_IO_PENDING:
-				try
-				{
-					uthread::suspend();
-				}
-				catch(std::exception const&)
-				{
-					CancelIoEx(hPipe, &state.overlapped);
-					throw;
-				}
-
-				success = SUCCEEDED(state.error);
-
-				if(!success)
-					std::cerr << "Error: " << state.error << std::endl;
-				break;
-
-			default:
-				std::cerr << "Error: " << GetLastError() << std::endl;
-				break;
+				uthread::current()->suspend([&](){
+					ConnectNamedPipe(hPipe, &state.overlapped);
+				
+					if(HasOverlappedIoCompleted(&state.overlapped))
+					{
+						state.error = GetLastError();
+						state.thread->resume();
+					}
+				});
+			}
+			catch(std::exception const&)
+			{
+				CancelIoEx(hPipe, &state.overlapped);
+				throw;
 			}
 
-			if(!success)
+			if(state.error != ERROR_PIPE_CONNECTED)
 			{
+				std::cerr << "Error: " << state.error << std::endl;
 				CloseHandle(hPipe);
 				hPipe = INVALID_HANDLE_VALUE;
 			}
@@ -218,7 +206,7 @@ namespace netlib
 		pipe ret((int)hPipe);
 		pipe_internal *rpi = pipe_internal::get(ret.mInternal);
 		rpi->name = pi->name;
-		return ret;
+		return std::move(ret);
 	}
 
 	void pipe::close()
@@ -240,12 +228,12 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		ReadFile(pi->handle, _buffer, (DWORD)_amt,
-			&state.amount, &state.overlapped);
-
 		try
 		{
-			uthread::suspend();
+			uthread::current()->suspend([&](){
+				ReadFile(pi->handle, _buffer, (DWORD)_amt,
+					&state.amount, &state.overlapped);
+			});
 		}
 		catch(std::exception const&)
 		{
@@ -272,12 +260,12 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		WriteFile(pi->handle, _buffer, (DWORD)_amt,
-			&state.amount, &state.overlapped);
-
 		try
 		{
-			uthread::suspend();
+			uthread::current()->suspend([&](){
+				WriteFile(pi->handle, _buffer, (DWORD)_amt,
+					&state.amount, &state.overlapped);
+			});
 		}
 		catch(std::exception const&)
 		{

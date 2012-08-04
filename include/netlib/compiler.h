@@ -39,3 +39,4 @@
 #endif
 
 #define NETLIB_ATOMIC			NETLIB_API NETLIB_INLINE 
+#define NETLIB_STRING_LITERAL(...) #__VA_ARGS__

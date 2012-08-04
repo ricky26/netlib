@@ -111,7 +111,8 @@ namespace netlib
 			break;
 		}
 
-		HANDLE hFile = CreateFileA(_path.c_str(), mode, FILE_SHARE_READ | FILE_SHARE_WRITE,
+		std::wstring utf16path = i18n::convert<i18n::utf16, i18n::utf8>(_path);
+		HANDLE hFile = CreateFileW(utf16path.c_str(), mode, FILE_SHARE_READ | FILE_SHARE_WRITE,
 			NULL, creat, FILE_FLAG_OVERLAPPED, NULL);
 		if(hFile == INVALID_HANDLE_VALUE)
 			return false;
@@ -166,13 +167,24 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			ReadFile(fi->handle, _buffer, (DWORD)_amt,
-				&state.amount, &state.overlapped);
-
 			fi->position.QuadPart += state.amount;
+
 			try
 			{
-				uthread::suspend();
+				uthread::current()->suspend([&]() {
+					if(!ReadFile(fi->handle, _buffer, (DWORD)_amt,
+						&state.amount, &state.overlapped))
+					{
+						int err = GetLastError();
+						if(err != ERROR_IO_PENDING)
+						{
+							state.error = err;
+							state.thread->resume();
+						}
+					}
+					else
+						state.thread->resume();
+				});
 			}
 			catch(std::exception const&)
 			{
@@ -202,12 +214,12 @@ namespace netlib
 			iocp_async_state state(fi->position);
 			state.thread = uthread::current();
 
-			WriteFile(fi->handle, _buffer, (DWORD)_amt,
-				&state.amount, &state.overlapped);
-
 			try
 			{
-				uthread::suspend();
+				uthread::current()->suspend([&]() {
+					WriteFile(fi->handle, _buffer, (DWORD)_amt,
+						&state.amount, &state.overlapped);
+				});
 			}
 			catch(std::exception const&)
 			{
@@ -523,19 +535,22 @@ namespace netlib
 		iocp_async_state state;
 		state.thread = uthread::current();
 
-		if(ReadDirectoryChangesW(di->handle, di->buffer, sizeof(di->buffer), TRUE,
-			//FILE_NOTIFY_CHANGE_FILE_NAME
-			//| FILE_NOTIFY_CHANGE_DIR_NAME
-			//| FILE_NOTIFY_CHANGE_SIZE
-			/*|*/ FILE_NOTIFY_CHANGE_LAST_WRITE
-			/*| FILE_NOTIFY_CHANGE_CREATION*/, nullptr, &state.overlapped, nullptr) == FALSE)
-		{
-			int err = GetLastError();
-			std::cerr << "ERR: " << err << std::endl;
-			return ret;
-		}
+		uthread::current()->suspend([&](){
+			if(ReadDirectoryChangesW(di->handle, di->buffer, sizeof(di->buffer), TRUE,
+				//FILE_NOTIFY_CHANGE_FILE_NAME
+				//| FILE_NOTIFY_CHANGE_DIR_NAME
+				//| FILE_NOTIFY_CHANGE_SIZE
+				/*|*/ FILE_NOTIFY_CHANGE_LAST_WRITE
+				/*| FILE_NOTIFY_CHANGE_CREATION*/, nullptr, &state.overlapped, nullptr) == FALSE)
+			{
+				state.error = GetLastError();
+				std::cerr << "ERR: " << state.error << std::endl;
+				state.thread->resume();
+			}
+		});
 
-		uthread::suspend();
+		if(state.error)
+			return ret;
 
 		uint8_t *ptr = di->buffer;
 		uint8_t *end = ptr + sizeof(di->buffer);

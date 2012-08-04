@@ -17,15 +17,14 @@ namespace netlib
 		// Template magic
 		//
 
-		struct utf8
+		template<typename U, typename S>
+		struct encoding_base
 		{
-			typedef std::string storage_t;
+			typedef S storage_t;
 		};
 
-		struct utf16
-		{
-			typedef std::wstring storage_t;
-		};
+		struct utf8: public encoding_base<utf8, std::string> {};
+		struct utf16: public encoding_base<utf16, std::wstring> {};
 
 		template<typename d_t, typename s_t>
 		struct convert_encoding
@@ -65,10 +64,10 @@ namespace netlib
 			}
 		};
 
-		template<typename dest_t, typename src_t>
-		static inline typename dest_t::storage_t convert(typename src_t::storage_t const& _str)
+		template<typename D, typename S>
+		typename D::storage_t convert(typename S::storage_t const& _value)
 		{
-			return convert_encoding<dest_t, src_t>::convert(_str);
+			return convert_encoding<D, S>::convert(_value);
 		}
 	}
 }

@@ -19,9 +19,9 @@ namespace netlib
 	static _declspec(thread) uint64_t gTime = 0;
 
 	HANDLE gCompletionPort = nullptr;
-	module gNetlibModule;
+	static module gNetlibModule;
 
-	typedef std::unordered_map<short, message_handler_t> msg_map_t;
+	typedef std::unordered_map<UINT, message_handler_t> msg_map_t;
 	static msg_map_t gMessageMap;
 
 	static void default_unhandled()
@@ -30,7 +30,7 @@ namespace netlib
 
 		try
 		{
-			uthread::exit();
+			uthread::current()->exit();
 		}
 		catch(...)
 		{
@@ -82,7 +82,7 @@ namespace netlib
 
 	static inline bool update_time()
 	{
-		if(gCPUFreq <= 0) return false;
+		if(gCPUFreq <= 0) setup_time();
 
 		uint64_t count = 0;
 		if(QueryPerformanceCounter((LARGE_INTEGER*)&count) != TRUE)
@@ -93,6 +93,8 @@ namespace netlib
 
 		count -= gTimeBase;
 		gTime = (count * 1000000) / gCPUFreq;
+
+		uthread::wake_sleepers();
 		return true;
 	}
 
@@ -158,6 +160,8 @@ namespace netlib
 		timeBeginPeriod(1);
 		atexit(endPeriod);
 		setup_time();
+
+		idle(false);
 		return true;
 	}
 
@@ -166,77 +170,97 @@ namespace netlib
 		PostQuitMessage(_val);
 	}
 
-	NETLIB_API void idle(bool _can_block)
+	NETLIB_API bool process_io_single(int _timeout)
 	{
-		DWORD numDone = 0;
+		DWORD numDone;
 		ULONG_PTR key;
 		iocp_async_state *state = nullptr;
-		MSG msg;
+		DWORD wait;
 
-		// Time
-		update_time();
-		uint64_t idleTime = gTime;
-		uthread::wake_sleepers();
+		if(_timeout < 0)
+			wait = INFINITE;
+		else
+			wait = (DWORD)_timeout;
 
-		// Message-Queue
-		while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) == TRUE)
+		BOOL ret = GetQueuedCompletionStatus(gCompletionPort, &numDone, &key, 
+			(OVERLAPPED**)&state, wait);
+		if(ret == FALSE && !state)
+			return false;
+
+		if(ret)
+			state->error = 0;
+		else
+			state->error = GetLastError();
+		
+		state->amount = numDone;
+		state->thread->resume();
+		return true;
+	}
+
+	NETLIB_API void process_io(bool _can_block)
+	{
+		for(;;)
 		{
-			TranslateMessage(&msg);
-			if(!msg.hwnd)
-			{
-				auto it = gMessageMap.find(msg.message);
-				if(it != gMessageMap.end())
-					it->second(msg.message, msg.lParam, msg.wParam);
-			}
-			else
-				DispatchMessage(&msg);
-		}
-
-		// IO
-		while(true)
-		{
-			DWORD wait = 0;
+			int timeout = 0;
 			if(_can_block)
 			{
 				_can_block = false;
 
 				// calculate deadline
-				uint64_t dl;
+				uint64_t dl, t=time();
 				if(!uthread::deadline(dl))
-					wait = INFINITE;
-				else
-					wait = (DWORD)((dl-idleTime)/1000); // Should be rounded up,
-									// but we don't want to accidentally
-									// wait too long!
+					timeout = -1;
+				else if(dl > t)
+					timeout = (int)((dl-t)/1000);
 			}
 
-			if(GetQueuedCompletionStatus(gCompletionPort, &numDone, &key,
-				(OVERLAPPED**)&state, wait) == TRUE)
-			{
-				state->error = 0;
-				state->amount = numDone;
-
-				if(state->handler)
-					state->handler(state);
-				else
-					state->thread->resume();
-			}
-			else if(state)
-			{
-				state->error = GetLastError();
-				state->amount = 0;
-
-				if(state->handler)
-					state->handler(state);
-				else
-					state->thread->resume();
-			}
-			else
+			if(!process_io_single(timeout))
 				break;
-
-			if(wait)
-				return idle(false);
 		}
+	}
+
+	NETLIB_API bool process_message()
+	{
+		MSG msg;
+		if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) == TRUE)
+		{
+			if(!msg.hwnd)
+			{
+				auto it = gMessageMap.find(msg.message);
+				if(it != gMessageMap.end())
+					it->second(msg.message, msg.lParam, msg.wParam);
+				return msg.message != WM_QUIT;
+			}
+
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			return true;
+		}
+
+		return false;
+	}
+
+	NETLIB_API void process_messages()
+	{
+		while(process_message());
+	}
+
+	NETLIB_API void update()
+	{
+		update_time();
+	}
+
+	NETLIB_API void idle(bool _can_block)
+	{
+		update();
+		process_messages();
+		process_io(_can_block);
+	}
+
+	NETLIB_API void idle_slave(bool _can_block)
+	{
+		update();
+		process_io(_can_block);
 	}
 
 	NETLIB_API int run_main_loop()
@@ -266,6 +290,11 @@ namespace netlib
 		auto it = gMessageMap.find(_msg);
 		if(it != gMessageMap.end())
 			gMessageMap.erase(it);
+	}
+	
+	NETLIB_API HANDLE completion_port()
+	{
+		return gCompletionPort;
 	}
 
 	NETLIB_API uint64_t time()
