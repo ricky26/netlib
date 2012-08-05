@@ -88,6 +88,7 @@ namespace netlib
 
 		static bool exists(std::string const& _path);
 		static void create(std::string const& _path);
+		static void create_parents(std::string const& _path);
 		static bool list(std::string const& _path, list_t _cb);
 
 		static std::pair<std::string, std::string> split(std::string const& _p);

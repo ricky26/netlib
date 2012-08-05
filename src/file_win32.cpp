@@ -335,14 +335,34 @@ namespace netlib
 
 	void directory::create(std::string const& _path)
 	{
+		/*
 		if(_path.empty())
 			return;
 
 		auto pr = split(_path);
 		if(!pr.first.empty())
 			create(pr.first);
+		*/
 
-		CreateDirectoryA(pr.second.c_str(), NULL);
+		// TODO wstring
+
+		CreateDirectoryA(_path.c_str(), NULL);
+	}
+
+	void directory::create_parents(std::string const& _path)
+	{
+		auto pr = split(_path);
+		std::string base = "";
+		while(!pr.first.empty() && !pr.second.empty())
+		{
+			if(base.empty())
+				base = pr.first;
+			else
+				base = netlib::directory::combine(base, pr.first);
+			create(base);
+			
+			pr = split(pr.second);
+		}
 	}
 
 	bool directory::list(std::string const& _path, list_t _cb)
