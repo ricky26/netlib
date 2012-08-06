@@ -101,6 +101,7 @@ namespace netlib
 
 		static bool schedule();
 		static void sleep(int _ms);
+		static void nice();
 
 		static bool init();
 		static void shutdown();

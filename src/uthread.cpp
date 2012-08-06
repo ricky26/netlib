@@ -64,6 +64,11 @@ namespace netlib
 		cur->suspend();
 	}
 	
+	void uthread::nice()
+	{
+		sleep(0);
+	}
+	
 	void uthread::wake_sleepers()
 	{
 		uint64_t tm = time();

@@ -335,18 +335,8 @@ namespace netlib
 
 	void directory::create(std::string const& _path)
 	{
-		/*
-		if(_path.empty())
-			return;
-
-		auto pr = split(_path);
-		if(!pr.first.empty())
-			create(pr.first);
-		*/
-
-		// TODO wstring
-
-		CreateDirectoryA(_path.c_str(), NULL);
+		std::wstring wpath = i18n::convert<i18n::utf16, i18n::utf8>(_path);
+		CreateDirectoryW(wpath.c_str(), NULL);
 	}
 
 	void directory::create_parents(std::string const& _path)
