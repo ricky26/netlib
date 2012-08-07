@@ -306,21 +306,25 @@ namespace netlib
 	
 	NETLIB_API bool register_message_handler(int _msg, message_handler_t const& _hdlr)
 	{
-		auto mm = *gMsgMap;
-		auto it = mm.find(_msg);
-		if(it != mm.end())
+		if(!gMsgMap)
 			return false;
 
-		mm.insert(msg_map_t::value_type(_msg, _hdlr));
+		auto it = gMsgMap->find(_msg);
+		if(it != gMsgMap->end())
+			return false;
+
+		gMsgMap->insert(msg_map_t::value_type(_msg, _hdlr));
 		return true;
 	}
 
 	NETLIB_API void remove_message_handler(int _msg)
 	{
-		auto mm = *gMsgMap;
-		auto it = mm.find(_msg);
-		if(it != mm.end())
-			mm.erase(it);
+		if(!gMsgMap)
+			return;
+
+		auto it =gMsgMap->find(_msg);
+		if(it != gMsgMap->end())
+			gMsgMap->erase(it);
 	}
 	
 	NETLIB_API HANDLE completion_port()
