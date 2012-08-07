@@ -62,7 +62,8 @@ namespace netlib
 		void destroy() override
 		{
 			remove();
-
+			DeleteFiber(fiber);
+			fiber = nullptr;
 			uthread::destroy();
 		}
 
@@ -139,11 +140,31 @@ namespace netlib
 		return true;
 	}
 
+	static void dry_wettener()
+	{
+		uthread_impl *ui = netlib::current();
+
+		do
+		{
+			// TODO: figure out how to deal with
+			// messages _AND_ IO whilst blocking
+			// in the kernel. :<
+			idle(false);
+		}
+		while(ui->single());
+	}
+
+	// TODO: if this works, then it could do with being
+	// not-boolean. -- Ricky26
 	bool uthread::schedule()
 	{
 		uthread_impl *cur = ::netlib::current();
+
 		if(cur->single())
-			return false;
+		{
+			handle_t dw = create(dry_wettener);
+			swap(dw.get());
+		}
 
 		cur->swap_next();
 		return true;
@@ -209,8 +230,8 @@ namespace netlib
 		void *f = ConvertThreadToFiber(impl);
 		if(!f)
 		{
-			// TODO: Hold pointer for deletion.
 			delete impl;
+			DeleteFiber(f);
 			return;
 		}
 

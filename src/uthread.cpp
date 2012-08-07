@@ -36,6 +36,9 @@ namespace netlib
 
 	void uthread::run(run_t const& _fn)
 	{
+		if(mDead)
+			return;
+
 		mRun = _fn;
 		swap(this);
 	}

@@ -357,19 +357,25 @@ namespace netlib
 
 	bool directory::list(std::string const& _path, list_t _cb)
 	{
-		WIN32_FIND_DATAA data;
+		WIN32_FIND_DATAW data;
 
 		if(!exists(_path))
 			return false;
 
-		HANDLE hdl = FindFirstFileA((_path + "\\*").c_str(), &data);
+		std::wstring wpath = i18n::convert<i18n::utf16, i18n::utf8>(_path);
+
+		HANDLE hdl = FindFirstFileW((wpath + L"\\*").c_str(), &data);
 		if(hdl == INVALID_HANDLE_VALUE)
 			return true;
 
-		_cb(data.cFileName);
+		std::string apath = i18n::convert<i18n::utf8, i18n::utf16>(data.cFileName);
+		_cb(apath);
 
-		while(FindNextFileA(hdl, &data) == TRUE)
-			_cb(data.cFileName);
+		while(FindNextFileW(hdl, &data) == TRUE)
+		{
+			std::string apath = i18n::convert<i18n::utf8, i18n::utf16>(data.cFileName);
+			_cb(apath);
+		}
 
 		FindClose(hdl);
 		return true;

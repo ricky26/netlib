@@ -16,14 +16,11 @@ namespace netlib
 		delete val;
 	}
 
-	NETLIB_API bool init();
-
 	NETLIB_API void exit(int _val=0);
 
 	NETLIB_API void idle(bool _can_block);
 	NETLIB_API void idle_slave(bool _can_block);
 
-	NETLIB_API int run_main_loop();
 	NETLIB_API void spawn_io_threads(int _count=1);
 
 	// Returns time from an aribtrary point in microseconds.

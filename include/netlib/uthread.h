@@ -95,6 +95,8 @@ namespace netlib
 			create([_ms, _fn]() { sleep(_ms); _fn(); });
 		}
 
+		inline bool dead() const { return mDead; }
+
 		void suspend();
 		void suspend(run_t const& _run);
 		void exit();

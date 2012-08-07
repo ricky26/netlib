@@ -295,6 +295,7 @@
     <ClInclude Include="include\netlib\file.h" />
     <ClInclude Include="include\netlib\http.h" />
     <ClInclude Include="include\netlib\i18n.h" />
+    <ClInclude Include="include\netlib\init.h" />
     <ClInclude Include="include\netlib\internal.h" />
     <ClInclude Include="include\netlib\irc.h" />
     <ClInclude Include="include\netlib\json.h" />

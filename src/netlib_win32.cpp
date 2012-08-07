@@ -13,16 +13,38 @@
 #include <cstdlib>
 
 namespace netlib
-{	
+{
+	static bool at_exit_done()
+	{
+		static bool gDone = false;
+		bool ret = gDone;
+		gDone = true;
+		return !ret;
+	}
+
+	static bool netlib_setup_done(bool _init=true)
+	{
+		static bool gDone = false;
+		bool ret = gDone;
+		gDone = _init;
+
+		return ret ^ _init;
+	}
+	
+	typedef std::unordered_map<UINT, message_handler_t> msg_map_t;
+	static msg_map_t *gMsgMap = nullptr;
+
+	static module &netlib_module_store()
+	{
+		static module g_store;
+		return g_store;
+	}
+
 	static _declspec(thread) uint64_t gTimeBase = 0;
 	static _declspec(thread) uint64_t gCPUFreq = 0;
 	static _declspec(thread) uint64_t gTime = 0;
 
 	HANDLE gCompletionPort = nullptr;
-	static module gNetlibModule;
-
-	typedef std::unordered_map<UINT, message_handler_t> msg_map_t;
-	static msg_map_t gMessageMap;
 
 	static void default_unhandled()
 	{
@@ -55,7 +77,7 @@ namespace netlib
 
 	NETLIB_API module netlib_module()
 	{
-		return gNetlibModule;
+		return netlib_module_store();
 	}
 
 	NETLIB_API module main_module()
@@ -68,7 +90,7 @@ namespace netlib
 	BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
 	{
 		if(dwReason = DLL_PROCESS_ATTACH)
-			gNetlibModule = module((void*)hInstance);
+			netlib_module_store() = module((void*)hInstance);
 
 		return TRUE;
 	}
@@ -108,61 +130,64 @@ namespace netlib
 		throw quit_exception((int)_wparm);
 	}
 
-	static void shutdown()
+	NETLIB_API void shutdown()
 	{
-		file::shutdown();
-		pipe::shutdown();
-		socket::shutdown();
-		uthread::shutdown();
-		thread::shutdown();
-
-		if(gCompletionPort)
+		if(netlib_setup_done(false))
 		{
-			CloseHandle(gCompletionPort);
-			gCompletionPort = nullptr;
-		}
+			file::shutdown();
+			pipe::shutdown();
+			socket::shutdown();
+			uthread::shutdown();
+			thread::shutdown();
 
-		CoUninitialize();
+			if(gCompletionPort)
+			{
+				CloseHandle(gCompletionPort);
+				gCompletionPort = nullptr;
+			}
+
+			CoUninitialize();
+
+			if(gMsgMap)
+			{
+				gMsgMap->clear();
+				delete gMsgMap;
+			}
+		}
 	}
 
-	NETLIB_API bool init()
+	NETLIB_API void init()
 	{
-		register_message_handler(WM_QUIT, handle_quit);
+		if(netlib_setup_done())
+		{
+			if(at_exit_done())
+				atexit(shutdown);
 
-		atexit(shutdown);	
-		set_unexpected(default_unhandled);
-		SetUnhandledExceptionFilter(UnhandledExceptionHandler);
-		CoInitializeEx(NULL, COINIT_MULTITHREADED);
+			if(!gMsgMap)
+				gMsgMap = new msg_map_t;
+
+			register_message_handler(WM_QUIT, handle_quit);
+			set_unexpected(default_unhandled);
+			SetUnhandledExceptionFilter(UnhandledExceptionHandler);
+			CoInitializeEx(NULL, COINIT_MULTITHREADED);
 		
-		// Used in static netlib.
-		if(!gNetlibModule.valid())
-			gNetlibModule = module(GetModuleHandle(NULL));
+			// Used in static netlib.
+			if(!netlib_module_store().valid())
+				netlib_module_store() = module(GetModuleHandle(NULL));
 
-		gCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, (ULONG_PTR)0, 0);
-		if(!gCompletionPort)
-			return false;
+			gCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, (ULONG_PTR)0, 0);
 
-		if(!thread::init())
-			return false;
+			thread::init();
+			uthread::init();
+			socket::init();
+			pipe::init();
+			file::init();
 
-		if(!uthread::init())
-			return false;
-
-		if(!socket::init())
-			return false;
-
-		if(!pipe::init())
-			return false;
-
-		if(!file::init())
-			return false;
-
-		timeBeginPeriod(1);
-		atexit(endPeriod);
-		setup_time();
-
-		idle(false);
-		return true;
+			timeBeginPeriod(1);
+			atexit(endPeriod);
+			setup_time();
+			idle(false); // Sets time and stuff
+		}
 	}
 
 	NETLIB_API void exit(int _val)
@@ -176,6 +201,9 @@ namespace netlib
 		ULONG_PTR key;
 		iocp_async_state *state = nullptr;
 		DWORD wait;
+
+		if(!gCompletionPort)
+			return false;
 
 		if(_timeout < 0)
 			wait = INFINITE;
@@ -226,8 +254,8 @@ namespace netlib
 		{
 			if(!msg.hwnd)
 			{
-				auto it = gMessageMap.find(msg.message);
-				if(it != gMessageMap.end())
+				auto it = gMsgMap->find(msg.message);
+				if(it != gMsgMap->end())
 					it->second(msg.message, msg.lParam, msg.wParam);
 				return msg.message != WM_QUIT;
 			}
@@ -255,6 +283,7 @@ namespace netlib
 		update();
 		process_messages();
 		process_io(_can_block);
+		thread::sleep(0);
 	}
 
 	NETLIB_API void idle_slave(bool _can_block)
@@ -277,19 +306,21 @@ namespace netlib
 	
 	NETLIB_API bool register_message_handler(int _msg, message_handler_t const& _hdlr)
 	{
-		auto it = gMessageMap.find(_msg);
-		if(it != gMessageMap.end())
+		auto mm = *gMsgMap;
+		auto it = mm.find(_msg);
+		if(it != mm.end())
 			return false;
 
-		gMessageMap.insert(msg_map_t::value_type(_msg, _hdlr));
+		mm.insert(msg_map_t::value_type(_msg, _hdlr));
 		return true;
 	}
 
 	NETLIB_API void remove_message_handler(int _msg)
 	{
-		auto it = gMessageMap.find(_msg);
-		if(it != gMessageMap.end())
-			gMessageMap.erase(it);
+		auto mm = *gMsgMap;
+		auto it = mm.find(_msg);
+		if(it != mm.end())
+			mm.erase(it);
 	}
 	
 	NETLIB_API HANDLE completion_port()
