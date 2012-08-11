@@ -67,6 +67,7 @@ namespace netlib
 			typedef linked_list_value<T> self;
 
 			inline linked_list_value() {}
+
 			explicit linked_list_value(T const& _t): mValue(_t) {}
 			explicit linked_list_value(T && _t): mValue(std::move(_t)) {}
 			inline linked_list_value(self const& _s): mValue(_s.mValue) {}
@@ -99,8 +100,11 @@ namespace netlib
 				: mNode(nullptr) { populate(mNode); }
 			inline linked_list_const_iterator(node *_nd)
 				: mNode(_nd) { populate(mNode); }
-
+			
 			inline linked_list_const_iterator(self const& _s)
+				: mNode(_s.mNode),
+				mPrev(_s.mPrev), mNext(_s.mNext) {}
+			inline linked_list_const_iterator(self && _s)
 				: mNode(_s.mNode),
 				mPrev(_s.mPrev), mNext(_s.mNext) {}
 
@@ -133,8 +137,9 @@ namespace netlib
 
 			self next() const { return self(mNext); }
 			self prev() const { return prev(mPrev); }
-
+			
 			iterator insert(const T & _val, A &_a) const;
+			iterator insert(T && _val, A &_a) const;
 			iterator splice(const iterator &_it) const;
 			void erase(A &_a) const;
 
@@ -201,13 +206,24 @@ namespace netlib
 
 			inline linked_list_iterator(self const& _s)
 				: linked_list_const_iterator(_s) {}
+			inline linked_list_iterator(self && _s)
+				: linked_list_const_iterator(_s) {}
 		};
 
 		template<typename T, typename A>
 		typename linked_list_const_iterator<T, A>::iterator
 			linked_list_const_iterator<T, A>::insert(const T & _val, A &_a) const
 		{
-			value *nn = new (_a.allocate(1)) value(_val);
+			value *nn = new (_a.allocate(1)) value(std::forward<const T&>(_val));
+			nn->insert(this_node());
+			return iterator(nn);
+		}
+		
+		template<typename T, typename A>
+		typename linked_list_const_iterator<T, A>::iterator
+			linked_list_const_iterator<T, A>::insert(T && _val, A &_a) const
+		{
+			value *nn = new (_a.allocate(1)) value(std::forward<T&&>(_val));
 			nn->insert(this_node());
 			return iterator(nn);
 		}
@@ -310,6 +326,11 @@ namespace netlib
 
 		inline size_t size() const { return std::distance(begin(), end()); }
 
+		inline iterator push_back(T &&_val)
+		{
+			return insert(end(), std::forward<T&&>(_val));
+		}
+
 		inline iterator push_back(const T &_val)
 		{
 			return insert(end(), _val);
@@ -318,6 +339,11 @@ namespace netlib
 		inline iterator push_front(const T &_val)
 		{
 			return insert(begin(), _val);
+		}
+
+		inline iterator push_front(T &&_val)
+		{
+			return insert(begin(), std::forward<T&&>(_val));
 		}
 
 		inline void pop_back()
@@ -330,17 +356,27 @@ namespace netlib
 			iterator(mHead.next()).erase(mAlloc);
 		}
 
-		iterator insert(const const_iterator &_whr, const T &_val)
+		inline iterator insert(const const_iterator &_whr, const T &_val)
 		{
 			return _whr.insert(_val, mAlloc);
 		}
+
+		inline iterator insert(const const_iterator &_whr, T &&_val)
+		{
+			return _whr.insert(std::forward<T&&>(_val), mAlloc);
+		}
+
+		inline void erase(const iterator &_it)
+		{
+			_it.erase(mAlloc);
+		}
 		
-		void splice(const const_iterator &_insert, const iterator &_take)
+		inline void splice(const const_iterator &_insert, const iterator &_take)
 		{
 			_insert.splice(_take);
 		}
 
-		void splice(const const_iterator &_insert,
+		inline void splice(const const_iterator &_insert,
 			self &/*_source*/, const iterator &_take)
 		{
 			_insert.splice(_take);
