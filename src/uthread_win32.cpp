@@ -191,7 +191,8 @@ namespace netlib
 		uthread_impl *cur = ::netlib::current();
 		handle<uthread_impl> thr = new uthread_impl(_start, _param);
 
-		void *fib = CreateFiber(0, (LPFIBER_START_ROUTINE)&uthread_fiber_start, thr.get());
+		// 1 <-- creates the smallest possible stack, it can grow, worry not.
+		void *fib = CreateFiber(1, (LPFIBER_START_ROUTINE)&uthread_fiber_start, thr.get());
 		if(!fib)
 			return NULL;
 
