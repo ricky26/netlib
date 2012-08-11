@@ -33,7 +33,7 @@ namespace netlib
 		{
 			for(auto it = handlers.begin(); it != handlers.end(); it++)
 			{
-				handler_t h = *it;
+				const handler_t &h(*it);
 
 				if(!h)
 				{

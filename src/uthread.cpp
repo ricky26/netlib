@@ -13,7 +13,7 @@ namespace netlib
 		typedef std::pair<uthread::handle_t, uint64_t> sleeper_t;
 		typedef linked_list<sleeper_t> sleepers_t;
 
-		sleepers_t sleepers, dead_sleepers;
+		sleepers_t sleepers, dead_sleepers, done_sleepers;
 	};
 
 	static NETLIB_THREAD thread_state *g_thread_state;
@@ -82,17 +82,23 @@ namespace netlib
 	void uthread::wake_sleepers()
 	{
 		uint64_t tm = time();
-		thread_state::sleepers_t &sleepers(g_thread_state->sleepers),
-			&dead(g_thread_state->dead_sleepers);
+		thread_state &t(*g_thread_state);
 
-		while(!sleepers.empty())
+		while(!t.sleepers.empty())
 		{
-			auto it = sleepers.begin();
+			auto it = t.sleepers.begin();
 			if(it->second > tm)
 				break;
 
+			t.done_sleepers.begin().splice(it);
+		}
+
+		while(!t.done_sleepers.empty())
+		{
+			auto it = t.done_sleepers.begin();
 			handle_t thr = it->first;
-			dead.splice(dead.begin(), it);
+			t.dead_sleepers.begin().splice(it);
+
 			swap(thr.get());
 		}
 	}
