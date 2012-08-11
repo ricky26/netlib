@@ -49,8 +49,8 @@ namespace netlib
 		~internalized();
 
 		internalized &operator =(internalized const& _b);
-		NETLIB_INLINE bool operator ==(internalized const& _b) const { return mInternal == _b.mInternal; }
-		NETLIB_INLINE bool operator !=(internalized const& _b) const { return mInternal != _b.mInternal; }
+		inline bool operator ==(internalized const& _b) const { return mInternal == _b.mInternal; }
+		inline bool operator !=(internalized const& _b) const { return mInternal != _b.mInternal; }
 
 	protected:
 		inline internalized(): mInternal(nullptr) {}

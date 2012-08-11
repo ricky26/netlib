@@ -11,7 +11,7 @@ namespace netlib
 	public:
 		event(void *_sender=nullptr);
 
-		NETLIB_INLINE void *sender() const { return mSender; }
+		inline void *sender() const { return mSender; }
 
 	private:
 		void *mSender;
@@ -25,11 +25,11 @@ namespace netlib
 		typedef std::list<handler_t> list_t;
 		typedef typename list_t::iterator return_t;
 
-		NETLIB_INLINE void clear() { handlers.clear(); }
-		NETLIB_INLINE return_t add_handler(handler_t const& _h) { handlers.push_back(_h); return handlers.end()--; }
-		NETLIB_INLINE void remove_handler(return_t const& _r) { handlers.erase(_r); }
+		inline void clear() { handlers.clear(); }
+		inline return_t add_handler(handler_t const& _h) { handlers.push_back(_h); return handlers.end()--; }
+		inline void remove_handler(return_t const& _r) { handlers.erase(_r); }
 
-		NETLIB_INLINE bool notify(T const& _evt)
+		bool notify(T const& _evt)
 		{
 			for(auto it = handlers.begin(); it != handlers.end(); it++)
 			{
@@ -53,10 +53,10 @@ namespace netlib
 			return false;
 		}
 		
-		NETLIB_INLINE bool operator ()(T const& _evt) { return notify(_evt); }
+		inline bool operator ()(T const& _evt) { return notify(_evt); }
 		
-		NETLIB_INLINE return_t operator +=(handler_t const& _h) { return add_handler(_h); }
-		NETLIB_INLINE void operator -=(return_t const& _h) { remove_handler(_h); }
+		inline return_t operator +=(handler_t const& _h) { return add_handler(_h); }
+		inline void operator -=(return_t const& _h) { remove_handler(_h); }
 
 	private:
 		list_t handlers;

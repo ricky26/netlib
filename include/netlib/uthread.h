@@ -79,17 +79,17 @@ namespace netlib
 		void resume();
 		
 		template<typename T>
-		NETLIB_INLINE void raise(T &_exc) { run([_exc]() { throw _exc; }); }
+		inline void raise(T &_exc) { run([_exc]() { throw _exc; }); }
 
 		template<typename T>
-		NETLIB_INLINE void timeout_raise(int _ms, T &_exc)
+		inline void timeout_raise(int _ms, T &_exc)
 		{
 			timeout(_ms, [_exc, this]() { raise(_exc); });
 		}
 
 		void run(run_t const& _fn);
 		
-		NETLIB_INLINE static void timeout(int _ms,
+		inline static void timeout(int _ms,
 			std::function<void()> const& _fn)
 		{
 			create([_ms, _fn]() { sleep(_ms); _fn(); });
@@ -119,7 +119,7 @@ namespace netlib
 		static void enter_thread_common();
 		static void exit_thread_common();
 
-		uthread() : mSuspended(false), mDead(false) {};
+		inline uthread() : mSuspended(false), mDead(false) {};
 
 		bool mSuspended, mDead;
 		run_t mRun;

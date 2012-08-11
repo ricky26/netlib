@@ -8,6 +8,8 @@
 
 namespace netlib
 {
+	static NETLIB_THREAD uthread_impl *dry_thread = nullptr;
+
 	static inline uthread_impl *current()
 	{
 		return (uthread_impl*)GetFiberData();
@@ -140,20 +142,6 @@ namespace netlib
 		return true;
 	}
 
-	static void dry_wettener()
-	{
-		uthread_impl *ui = netlib::current();
-
-		do
-		{
-			// TODO: figure out how to deal with
-			// messages _AND_ IO whilst blocking
-			// in the kernel. :<
-			idle(false);
-		}
-		while(ui->single());
-	}
-
 	// TODO: if this works, then it could do with being
 	// not-boolean. -- Ricky26
 	bool uthread::schedule()
@@ -161,10 +149,7 @@ namespace netlib
 		uthread_impl *cur = ::netlib::current();
 
 		if(cur->single())
-		{
-			handle_t dw = create(dry_wettener);
-			swap(dw.get());
-		}
+			swap(dry_thread);
 
 		cur->swap_next();
 		return true;
@@ -201,7 +186,7 @@ namespace netlib
 		impl->start(impl->argument);
 	}
 
-	uthread::handle_t uthread::create(uthread_start_t _start, void *_param)
+	uthread_impl *uthread_create(uthread::uthread_start_t _start, void *_param)
 	{
 		uthread_impl *cur = ::netlib::current();
 		handle<uthread_impl> thr = new uthread_impl(_start, _param);
@@ -211,8 +196,14 @@ namespace netlib
 			return NULL;
 
 		thr->fiber = fib;
-		swap(thr.get());
 		return thr.get();
+	}
+
+	uthread::handle_t uthread::create(uthread_start_t _start, void *_param)
+	{
+		handle<uthread> thr = uthread_create(_start, _param);
+		swap(thr.get());
+		return thr;
 	}
 
 	bool uthread::init()
@@ -222,6 +213,19 @@ namespace netlib
 
 	void uthread::shutdown()
 	{
+	}
+
+	static void uthread_dry(void *)
+	{
+		for(;;)
+		{
+			// TODO: figure out how to deal with
+			// messages _AND_ IO whilst blocking
+			// in the kernel. :<
+			uthread_impl *impl = netlib::current();
+			while(impl->single()) idle(false);
+			impl->suspend();
+		}
 	}
 	
 	void uthread::enter_thread()
@@ -236,11 +240,26 @@ namespace netlib
 		}
 
 		impl->fiber = f;
+
+		if(!dry_thread)
+		{
+			dry_thread = uthread_create(uthread_dry, nullptr);
+			dry_thread->mSuspended = true;
+		}
+
 		enter_thread_common();
 	}
 
 	void uthread::exit_thread()
 	{
+		if(dry_thread)
+		{
+			uthread_impl *dt = dry_thread;
+			dry_thread = nullptr;
+
+			dt->release();
+		}
+
 		exit_thread_common();
 	}
 }

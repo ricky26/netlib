@@ -29,46 +29,46 @@ namespace netlib
 		typedef owned_ptr<T> self_t;
 		typedef T *ptr_t;
 
-		NETLIB_INLINE owned_ptr() : ptr(nullptr) {}
+		inline owned_ptr() : ptr(nullptr) {}
 
-		NETLIB_INLINE owned_ptr(ptr_t const& _ptr)
+		inline owned_ptr(ptr_t const& _ptr)
 			: ptr(_ptr) {}
 
-		NETLIB_INLINE owned_ptr(self_t &&_ptr)
+		inline owned_ptr(self_t &&_ptr)
 			: ptr(_ptr.ptr)
 		{
 			_ptr.ptr = nullptr;
 		}
 
 		template<typename Z>
-		NETLIB_INLINE owned_ptr(owned_ptr<Z> &_ptr)
+		inline owned_ptr(owned_ptr<Z> &_ptr)
 			: ptr(static_cast<ptr_t>(_ptr.ptr))
 		{
 			_ptr.ptr = nullptr;
 		}
 
-		NETLIB_INLINE ~owned_ptr()
+		inline ~owned_ptr()
 		{
 			owned_ptr_delete<T>::destroy(ptr);
 		}
 
-		NETLIB_INLINE void set(ptr_t const& _ptr)
+		inline void set(ptr_t const& _ptr)
 		{
 			if(ptr)
 				owned_ptr_delete<T>::destroy(ptr);
 			ptr = _ptr;
 		}
 
-		NETLIB_INLINE ptr_t get() const { return ptr; }
+		inline ptr_t get() const { return ptr; }
 
-		NETLIB_INLINE ptr_t take()
+		inline ptr_t take()
 		{
 			ptr_t ret = ptr;
 			ptr = nullptr;
 			return ret;
 		}
 
-		NETLIB_INLINE self_t &operator =(ptr_t const& _ptr)
+		inline self_t &operator =(ptr_t const& _ptr)
 		{
 			set(_ptr);
 			return *this;

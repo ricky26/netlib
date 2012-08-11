@@ -299,6 +299,7 @@
     <ClInclude Include="include\netlib\internal.h" />
     <ClInclude Include="include\netlib\irc.h" />
     <ClInclude Include="include\netlib\json.h" />
+    <ClInclude Include="include\netlib\linked_list.h" />
     <ClInclude Include="include\netlib\lock.h" />
     <ClInclude Include="include\netlib\md5.h" />
     <ClInclude Include="include\netlib\module.h" />

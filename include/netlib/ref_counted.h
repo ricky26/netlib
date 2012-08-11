@@ -45,7 +45,7 @@ namespace netlib
 	public:
 		friend class ref_counted;
 
-		NETLIB_INLINE ref_counted *target() const { return mTarget; }
+		inline ref_counted *target() const { return mTarget; }
 
 	protected:
 		inline weak_target(ref_counted *_r): mTarget(_r) {}

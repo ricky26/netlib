@@ -1,4 +1,5 @@
 #include <netlib/uthread.h>
+#include <netlib/linked_list.h>
 #include <algorithm>
 
 namespace netlib
@@ -10,9 +11,9 @@ namespace netlib
 	struct thread_state
 	{
 		typedef std::pair<uthread::handle_t, uint64_t> sleeper_t;
-		typedef std::list<sleeper_t> sleepers_t;
+		typedef linked_list<sleeper_t> sleepers_t;
 
-		sleepers_t sleepers;
+		sleepers_t sleepers, dead_sleepers;
 	};
 
 	static NETLIB_THREAD thread_state *g_thread_state;
@@ -45,7 +46,8 @@ namespace netlib
 
 	void uthread::sleep(int _ms)
 	{
-		thread_state::sleepers_t &sleepers = g_thread_state->sleepers;
+		thread_state::sleepers_t &sleepers(g_thread_state->sleepers),
+			&dead(g_thread_state->dead_sleepers);
 		uthread::handle_t cur = current();
 
 		uint64_t tm = time() + _ms*1000;
@@ -55,14 +57,19 @@ namespace netlib
 		for(;it != sleepers.end(); it++)
 		{
 			if(it->second > tm)
-			{
-				sleepers.insert(it, sleeper);
 				break;
-			}
 		}
 		
-		if(it == sleepers.end())
-			sleepers.push_back(sleeper);
+		if(!dead.empty())
+		{
+			auto ss = dead.begin();
+			ss->first = cur;
+			ss->second = tm;
+
+			it.splice(ss);
+		}
+		else
+			sleepers.insert(it, sleeper);
 
 		cur->suspend();
 	}
@@ -75,13 +82,17 @@ namespace netlib
 	void uthread::wake_sleepers()
 	{
 		uint64_t tm = time();
-		thread_state::sleepers_t &sleepers = g_thread_state->sleepers;
+		thread_state::sleepers_t &sleepers(g_thread_state->sleepers),
+			&dead(g_thread_state->dead_sleepers);
 
-		while(!sleepers.empty()
-			&& sleepers.front().second < tm)
+		while(!sleepers.empty())
 		{
-			handle_t thr = sleepers.front().first;
-			sleepers.pop_front();
+			auto it = sleepers.begin();
+			if(it->second > tm)
+				break;
+
+			handle_t thr = it->first;
+			dead.splice(dead.begin(), it);
 			swap(thr.get());
 		}
 	}

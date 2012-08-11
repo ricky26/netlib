@@ -218,6 +218,9 @@
     <ClInclude Include="include\netlib\init.h">
       <Filter>Header Files\netlib</Filter>
     </ClInclude>
+    <ClInclude Include="include\netlib\linked_list.h">
+      <Filter>Header Files\netlib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="netlib.rc">

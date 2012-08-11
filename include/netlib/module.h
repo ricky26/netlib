@@ -33,8 +33,8 @@ namespace netlib
 		file file() const;
 		
 		module &operator =(module const& _b);
-		NETLIB_INLINE bool operator ==(module const& _b) const { return mInternal == _b.mInternal; }
-		NETLIB_INLINE bool operator !=(module const& _b) const { return mInternal != _b.mInternal; }
+		inline bool operator ==(module const& _b) const { return mInternal == _b.mInternal; }
+		inline bool operator !=(module const& _b) const { return mInternal != _b.mInternal; }
 
 	private:
 		void *mInternal;
