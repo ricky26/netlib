@@ -1,4 +1,5 @@
 #include "netlib.h"
+#include <cassert>
 
 #pragma once
 
@@ -9,7 +10,7 @@ namespace netlib
 	{
 		inline lock_holder(...)
 		{
-			static_assert(false, "Cannot lock T");
+			assert(false && "Cannot lock T");
 		}
 	};
 
@@ -18,7 +19,7 @@ namespace netlib
 	{
 		inline try_lock_holder(...)
 		{
-			static_assert(false, "Cannot lock T");
+			assert(false && "Cannot lock T");
 		}
 	};
 
@@ -56,5 +57,5 @@ namespace netlib
 	template<typename T>
 	inline lock_holder<T> lock(T &_lock) { return lock_holder<T>(_lock); }
 	template<typename T>
-	inline try_lock_holder<T> try_lock(T &_lock) { return try_lock_holder(_lock); }
+	inline try_lock_holder<T> try_lock(T &_lock) { return try_lock_holder<T>(_lock); }
 }

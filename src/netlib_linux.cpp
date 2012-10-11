@@ -6,6 +6,7 @@
 #include "netlib/file.h"
 #include "netlib_linux.h"
 #include <fcntl.h>
+#include <unistd.h>
 
 #define MAX_EVENTS 16
 
@@ -44,11 +45,14 @@ namespace netlib
 
 	void aio_struct::begin_in()
 	{
-		bool susp = !in.empty();
-		in.push_back(uthread::current());
+		uthread::handle_t thread =
+			uthread::current();
 
+		bool susp = !in.empty();
+		in.push_back(thread);
+		
 		if(susp)
-			uthread::suspend();
+			thread->suspend([](){});
 	}
 
 	void aio_struct::end_in()
@@ -60,11 +64,13 @@ namespace netlib
 
 	void aio_struct::begin_out()
 	{
+		uthread::handle_t thread =
+			uthread::current();
 		bool susp = !out.empty();
 		out.push_back(uthread::current());
 
 		if(susp)
-			uthread::suspend();
+			thread->suspend([](){});
 	}
 
 	void aio_struct::end_out()
@@ -116,7 +122,7 @@ namespace netlib
 
 			if(gEPollFd != -1)
 			{
-				close(gEPollFd);
+				::close(gEPollFd);
 				gEPollFd = -1;
 			}
 		}

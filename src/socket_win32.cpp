@@ -91,7 +91,7 @@ namespace netlib
 
 	socket::socket()
 	{
-		mInternal = new socket_internal();
+		mInternal = nullptr;
 	}
 	
 	socket::socket(address_family _af, socket_type _sock, socket_protocol _prot)

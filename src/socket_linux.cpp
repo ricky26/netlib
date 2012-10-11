@@ -2,6 +2,7 @@
 #include "netlib_linux.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <netdb.h>
 #include <iostream>
 #include <list>
@@ -13,17 +14,18 @@ namespace netlib
 	// socket_internal
 	//
 	
-	struct socket_internal
+	struct socket_internal: public ref_counted
 	{
 		socket_internal(int _fd=-1)
 		{
+			acquire();
 			fd = _fd;
 		}
 
 		~socket_internal()
 		{
 			if(fd != -1)
-				close(fd);
+				::close(fd);
 		}
 
 		int fd;
@@ -78,12 +80,17 @@ namespace netlib
 	//
 	// socket
 	//
+
+	socket::socket()
+	{
+		mInternal = nullptr;
+	}
 	
 	socket::socket(address_family _af, socket_type _sock, socket_protocol _prot)
 	{		
 		int af, type, prot;
 		if(!getSocketParams(_af, _sock, _prot, af, type, prot))
-			mInternal = new socket_internal();
+			mInternal = nullptr;
 		else
 		{
 			socket_internal *si = new socket_internal();
@@ -107,21 +114,23 @@ namespace netlib
 		mInternal = si;
 	}
 
-	socket::socket(socket_constructor_t const& _con)
+	socket::socket(socket const& _sock)
 	{
-		mInternal = _con.value;
+		socket_internal *si = socket_internal::get(_sock.mInternal);
+		si->acquire();
+		mInternal = si;
 	}
-	
-	socket::socket(socket &_other)
+
+	socket::socket(socket &&_s)
+		: mInternal(_s.mInternal)
 	{
-		mInternal = _other.mInternal;
-		_other.mInternal = new socket_internal();
+		_s.mInternal = nullptr;
 	}
 
 	socket::~socket()
 	{
-		if(mInternal)
-			delete socket_internal::get(mInternal);
+		if(socket_internal *si = socket_internal::get(mInternal))
+			si->release();
 	}
 	
 	bool socket::valid() const
@@ -142,13 +151,6 @@ namespace netlib
 		return ret;
 	}
 
-	socket_constructor_t socket::returnable_value()
-	{
-		void *ret = mInternal;
-		mInternal = new socket_internal();
-		return ret;
-	}
-	
 	bool socket::connect(std::string const& _host, int _port)
 	{
 		socket_internal *si = socket_internal::get(mInternal);
@@ -174,7 +176,7 @@ namespace netlib
 		int ret = ::connect(si->fd, (sockaddr*)&addr, sizeof(addr));
 		if(ret < 0 && errno == EAGAIN)
 		{
-			uthread::suspend();
+			uthread::current()->suspend();
 			ret = ::connect(si->fd, (sockaddr*)&addr, sizeof(addr));
 		}
 		si->aio.end_out();
@@ -216,7 +218,7 @@ namespace netlib
 		return true;
 	}
 
-	socket_constructor_t socket::accept()
+	socket socket::accept()
 	{
 		socket_internal *si = socket_internal::get(mInternal);
 
@@ -227,7 +229,7 @@ namespace netlib
 		int ret = ::accept(si->fd, (sockaddr*)&addr, &len);
 		if(ret < 0 && errno == EAGAIN)
 		{
-			uthread::suspend();
+			uthread::current()->suspend();
 			ret = ::accept(si->fd, (sockaddr*)&addr, &len);
 		}
 		si->aio.end_in();
@@ -236,30 +238,33 @@ namespace netlib
 		{
 			std::cerr << "Accept failed %d.\n" << errno << std::endl;
 			close();
-			return new socket_internal();
+			return socket();
 		}
 
-		socket s(ret);
-		return s.returnable_value();
+		return socket(ret);
 	}
 
 	void socket::close()
 	{
 		socket_internal *si = socket_internal::get(mInternal);
-		mInternal = new socket_internal();
-		delete si;
+		if(si != nullptr && si->fd != -1)
+		{
+			int fd = si->fd;
+			si->fd = -1;
+			::close(fd);
+		}
 	}
 
 	size_t socket::read(void *_buffer, size_t _amt)
 	{
 		socket_internal *si = socket_internal::get(mInternal);
-		if(si->fd != -1)
+		if(si && si->fd != -1)
 		{
 			si->aio.begin_in();
 			int ret = ::read(si->fd, _buffer, _amt);
 			if(ret < 0 && errno == EAGAIN)
 			{
-				uthread::suspend();
+				uthread::current()->suspend();
 				ret = ::read(si->fd, _buffer, _amt);
 			}
 			si->aio.end_in();
@@ -279,13 +284,13 @@ namespace netlib
 	size_t socket::write(const void *_buffer, size_t _amt)
 	{
 		socket_internal *si = socket_internal::get(mInternal);
-		if(si->fd != -1)
+		if(si && si->fd != -1)
 		{
 			si->aio.begin_out();
 			int ret = ::write(si->fd, _buffer, _amt);
 			if(ret < 0 && errno == EAGAIN)
 			{
-				uthread::suspend();
+				uthread::current()->suspend();
 				ret = ::write(si->fd, _buffer, _amt);
 			}
 			si->aio.end_out();

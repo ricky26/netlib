@@ -3,4 +3,7 @@ Release
 x64
 *.user
 .*
+*.os
+*.so
+*~
 *.aps

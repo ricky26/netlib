@@ -2,6 +2,7 @@
 #include "netlib_linux.h"
 #include <iostream>
 #include <fcntl.h>
+#include <unistd.h>
 
 namespace netlib
 {
@@ -9,7 +10,7 @@ namespace netlib
 	// file_internal
 	//
 
-	struct file_internal
+	struct file_internal: public ref_counted
 	{
 		int handle;
 		off_t position;
@@ -19,6 +20,13 @@ namespace netlib
 		{
 			handle = _hdl;
 			position = 0;
+			acquire();
+		}
+
+		~file_internal()
+		{
+			if(handle != -1)
+				::close(handle);
 		}
 
 		static inline file_internal *get(void *_ptr)
@@ -36,10 +44,18 @@ namespace netlib
 		mInternal = new file_internal();
 	}
 
-	file::file(file &_f)
+	file::file(file const& _f)
 	{
-		mInternal = _f.mInternal;
-		_f.mInternal = new file_internal();
+		file_internal *fi = file_internal::get(_f.mInternal);
+		fi->acquire();
+		mInternal = fi;
+	}
+
+	file::file(file &&_f)
+	{
+		file_internal *fi = file_internal::get(_f.mInternal);
+		mInternal = fi;
+		_f.mInternal = nullptr;
 	}
 
 	file::file(std::string const& _path, int _mode)
@@ -50,16 +66,8 @@ namespace netlib
 
 	file::~file()
 	{
-		if(valid())
-		{
-			file_internal *fi = file_internal::get(mInternal);
-			mInternal = NULL;
-
-			if(fi->handle != -1)
-				::close(fi->handle);
-
-			delete fi;
-		}
+		if(file_internal *fi = file_internal::get(mInternal))
+			fi->release();
 	}
 
 	bool file::valid() const
@@ -119,6 +127,18 @@ namespace netlib
 		fi->handle = -1;
 		fi->position = 0;
 	}
+
+	uint64_t file::size()
+	{
+		file_internal *fi = file_internal::get(mInternal);
+		if(!fi || fi->handle == -1)
+			return 0;
+
+		uint64_t pos = ::lseek(fi->handle, 0, SEEK_CUR);
+		uint64_t ret = ::lseek(fi->handle, 0, SEEK_END);
+		::lseek(fi->handle, pos, SEEK_SET);
+		return ret;
+	}
 		
 	size_t file::read(void *_buffer, size_t _amt)
 	{
@@ -126,14 +146,16 @@ namespace netlib
 		if(fi && fi->handle != -1)
 		{
 			fi->aio.begin_in();
+
 			int ret = pread(fi->handle, _buffer, _amt, fi->position);
 			if(ret == -1 && errno == EAGAIN)
 			{
-				uthread::suspend();
+				uthread::current()->suspend();
 				ret = pread(fi->handle, _buffer, _amt, fi->position);
 			}
-			fi->aio.end_in();
 
+			fi->aio.end_in();
+		
 			if(ret == -1)
 			{
 				close();
@@ -155,9 +177,10 @@ namespace netlib
 			int ret = pwrite(fi->handle, _buffer, _amt, fi->position);
 			if(ret == -1 && errno == EAGAIN)
 			{
-				uthread::suspend();
+				uthread::current()->suspend();
 				ret = pwrite(fi->handle, _buffer, _amt, fi->position);
 			}
+			fi->aio.end_out();
 
 			if(ret == -1)
 			{

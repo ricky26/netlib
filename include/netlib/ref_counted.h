@@ -98,8 +98,8 @@ namespace netlib
 			_h.ptr = nullptr;
 		}
 
-		template<typename T>
-		inline handle(handle<T> const& _h)
+		template<typename Q>
+		inline handle(handle<Q> const& _h)
 		{
 			ptr = _h.get();
 			if(ptr)
@@ -141,16 +141,16 @@ namespace netlib
 			reset(nullptr);
 		}
 
-		template<typename T>
-		handle<T> cast() const
+		template<typename Q>
+		handle<Q> cast() const
 		{
-			return handle<T>(dynamic_cast<T*>(ptr));
+			return handle<Q>(dynamic_cast<Q*>(ptr));
 		}
 
-		template<typename T>
-		handle<T> cast_static() const
+		template<typename Q>
+		handle<Q> cast_static() const
 		{
-			return handle<T>(static_cast<T*>(ptr));
+			return handle<Q>(static_cast<Q*>(ptr));
 		}
 
 		inline operator bool() const

@@ -45,7 +45,7 @@ namespace netlib
 
 	pipe::pipe()
 	{
-		mInternal = new pipe_internal();
+		mInternal = nullptr;
 	}
 
 	pipe::pipe(int _handle)

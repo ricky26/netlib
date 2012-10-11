@@ -30,7 +30,7 @@ namespace netlib
 			return static_cast<T>(symbol(_nm));
 		}
 
-		file file() const;
+		netlib::file file() const;
 		
 		module &operator =(module const& _b);
 		inline bool operator ==(module const& _b) const { return mInternal == _b.mInternal; }

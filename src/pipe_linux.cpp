@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 #include <iostream>
 #include <cstring>
 
@@ -13,7 +14,7 @@ namespace netlib
 	// pipe_internal
 	//
 	
-	struct pipe_internal
+	struct pipe_internal: public ref_counted
 	{
 		int fd;
 		aio_struct aio;
@@ -41,7 +42,7 @@ namespace netlib
 
 	pipe::pipe()
 	{
-		mInternal = new pipe_internal();
+		mInternal = nullptr;
 	}
 
 	pipe::pipe(int _handle)
@@ -54,21 +55,24 @@ namespace netlib
 		mInternal = pi;
 	}
 
-	pipe::pipe(pipe &_p)
+	pipe::pipe(pipe const& _p)
 	{
-		mInternal = _p.mInternal;
-		_p.mInternal = new pipe_internal();
+		pipe_internal *pi = pipe_internal::get(_p.mInternal);
+		pi->acquire();
+		mInternal = pi;
 	}
 
-	pipe::pipe(pipe_constructor_t const& _con)
+	pipe::pipe(pipe &&_p)
 	{
-		mInternal = _con.value;
+		pipe_internal *pi = pipe_internal::get(_p.mInternal);
+		_p.mInternal = nullptr;
+		mInternal = pi;
 	}
 
 	pipe::~pipe()
 	{
-		if(mInternal)
-			delete pipe_internal::get(mInternal);
+		if(pipe_internal *pi = pipe_internal::get(mInternal))
+			pi->release();
 	}
 
 	bool pipe::valid() const
@@ -91,13 +95,6 @@ namespace netlib
 		return hdl;
 	}
 
-	pipe_constructor_t pipe::returnable_value()
-	{
-		void *ret = mInternal;
-		mInternal = new pipe_internal();
-		return ret;
-	}
-		
 	bool pipe::open(std::string const& _pipe)
 	{
 		pipe_internal *pi = pipe_internal::get(mInternal);
@@ -120,7 +117,7 @@ namespace netlib
 		int ret = connect(fd, (sockaddr*)&addr, len);
 		if(ret == -1 && errno == EAGAIN)
 		{
-			uthread::suspend();
+			uthread::current()->suspend();
 			ret = connect(fd, (sockaddr*)&addr, len);
 		}
 		pi->aio.end_out();
@@ -169,11 +166,11 @@ namespace netlib
 		return true;
 	}
 
-	pipe_constructor_t pipe::accept()
+	pipe pipe::accept()
 	{
 		pipe_internal *pi = pipe_internal::get(mInternal);
 		if(pi->fd == -1)
-			return new pipe_internal();
+			return pipe();
 
 		sockaddr_un addr;
 		socklen_t len = sizeof(addr);
@@ -182,19 +179,18 @@ namespace netlib
 		int ret = ::accept(pi->fd, (sockaddr*)&addr, &len);
 		if(ret < 0 && errno == EAGAIN)
 		{
-			uthread::suspend();
-			ret = ::accept((int)mInternal, (sockaddr*)&addr, &len);
+			uthread::current()->suspend();
+			ret = ::accept(pi->fd, (sockaddr*)&addr, &len);
 		}
 		pi->aio.end_in();
 
 		if(ret == -1)
 		{
 			close();
-			return new pipe_internal();
+			return pipe();
 		}
 
-		pipe p(ret);
-		return p.returnable_value();
+		return std::move(pipe(ret));
 	}
 
 	void pipe::close()
@@ -217,7 +213,7 @@ namespace netlib
 		int ret = ::read(pi->fd, _buffer, _amt);
 		if(ret < 0 && errno == EAGAIN)
 		{
-			uthread::suspend();
+			uthread::current()->suspend();
 			ret = ::read(pi->fd, _buffer, _amt);
 		}
 		pi->aio.end_in();
@@ -241,8 +237,8 @@ namespace netlib
 		int ret = ::write(pi->fd, _buffer, _amt);
 		if(ret < 0 && errno == EAGAIN)
 		{
-			uthread::suspend();
-			ret = ::write((int)mInternal, _buffer, _amt);
+			uthread::current()->suspend();
+			ret = ::write(pi->fd, _buffer, _amt);
 		}
 		pi->aio.end_out();
 
@@ -255,10 +251,9 @@ namespace netlib
 		return ret;
 	}
 		
-	socket_constructor_t pipe::read()
+	socket pipe::read()
 	{
-		socket s;
-		return s.returnable_value(); // TODO: Write this.
+		return socket(); // TODO: Write this.
 	}
 
 	bool pipe::write(socket &_sock)

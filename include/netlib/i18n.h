@@ -1,5 +1,6 @@
 #include "netlib.h"
 #include <string>
+#include <cassert>
 
 #pragma once
 
@@ -31,7 +32,7 @@ namespace netlib
 		{
 			static inline void convert()
 			{
-				static_assert(false, "convert_encoding not implemented for s_t/d_t.");
+				assert(false && "convert_encoding not implemented for s_t/d_t.");
 			}
 		};
 

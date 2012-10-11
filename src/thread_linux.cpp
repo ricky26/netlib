@@ -1,5 +1,6 @@
 #include "netlib/thread.h"
 #include "netlib/uthread.h"
+#include <time.h>
 #include <pthread.h>
 #include <signal.h>
 #include <exception>
@@ -14,16 +15,11 @@ namespace netlib
 	class thread_impl: public thread
 	{
 	public:
-		thread_impl(thread_fn_t _fn, void *_arg)
-			: handle(0), function(_fn), argument(_arg)
-			, protection(0)
+		thread_impl(thread_fn_t _fn=nullptr, void *_arg=nullptr,
+			pthread_t _handle=0)
+			: handle(_handle), function(_fn), argument(_arg)
 		{
-		}
-
-		thread_impl(pthread_t _h)
-			: handle(_h), function(NULL), argument(NULL)
-			, protection(0)
-		{
+			acquire();
 		}
 
 		static void sigsegv_handler(int)
@@ -36,27 +32,25 @@ namespace netlib
 			signal(SIGSEGV, sigsegv_handler);
 
 			if(!current)
-				current = new thread_impl(pthread_self());
-			else
-				uthread::enable_uthread();
+				current = new thread_impl(nullptr, nullptr, pthread_self());
+
+			current->acquire();
+
+			uthread::enter_thread();
 		}
 
 		static void cleanup()
 		{
-			if(current)
-			{
-				thread_impl *ti = current;
-				current = NULL;
+			uthread::exit_thread();
 
-				//delete ti;
-			}
+			if(current)
+				current->release();
 		}
 
 		static __thread thread_impl *current;
 		thread_fn_t function;
 		void *argument;
 		pthread_t handle;
-		int protection;
 	};
 
 	thread_impl __thread *thread_impl::current = NULL;
@@ -77,39 +71,20 @@ namespace netlib
 	{
 		return true;
 	}
-
-	bool thread::suspend()
-	{
-		return true;
-	}
-
-	bool thread::resume()
-	{
-		return true;
-	}
-
-	int thread::protection() const
-	{
-		return ((thread_impl*)this)->protection;
-	}
-
-	int thread::protect()
-	{
-		return ++thread_impl::current->protection;
-	}
-
-	int thread::unprotect()
-	{
-		int ret = thread_impl::current->protection;
-		if(ret > 0)
-		{
-			ret--;
-			thread_impl::current->protection = ret;
-		}
-
-		return ret;
-	}
 	
+	void thread::exit()
+	{
+	}
+
+	void thread::schedule()
+	{
+	}
+
+	void thread::sleep(int _ms)
+	{
+		//msleep(_ms);
+	}
+
 	thread::handle_t thread::current()
 	{
 		return thread_impl::current;
@@ -120,8 +95,6 @@ namespace netlib
 		thread_impl *ths = (thread_impl*)_param;
 		ths->current = ths;
 		
-		int ret = 0;
-
 		thread_impl::setup();
 		try
 		{
@@ -134,7 +107,7 @@ namespace netlib
 		}
 		thread_impl::cleanup();
 
-		return (void*)ret;
+		return nullptr;
 	}
 
 	thread::handle_t thread::create(thread_fn_t _fn, void *_arg)
@@ -148,16 +121,6 @@ namespace netlib
 
 		ret->handle = handle;
 		return ret;
-	}
-
-	static void create_void(void *_arg)
-	{
-		((thread::void_fn_t)_arg)();
-	}
-
-	thread::handle_t thread::create(void_fn_t _fn)
-	{
-		return create(create_void, (void*)_fn);
 	}
 
 	bool thread::init()
