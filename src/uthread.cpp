@@ -30,11 +30,6 @@ namespace netlib
 		suspend();
 	}
 
-	void uthread::resume()
-	{
-		swap(this);
-	}
-
 	void uthread::run(run_t const& _fn)
 	{
 		if(mDead)

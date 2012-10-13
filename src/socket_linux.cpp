@@ -224,15 +224,26 @@ namespace netlib
 
 		sockaddr_in addr;
 		socklen_t len = sizeof(addr);
+		uthread::handle_t thr = uthread::current();
+		int ret;
+		bool done;
 
 		si->aio.begin_in();
-		int ret = ::accept(si->fd, (sockaddr*)&addr, &len);
-		if(ret < 0 && errno == EAGAIN)
-		{
-			uthread::current()->suspend();
-			ret = ::accept(si->fd, (sockaddr*)&addr, &len);
-		}
+
+		thr->suspend([&]() {
+				int r = ::accept(si->fd, (sockaddr*)&addr, &len);
+				if(r != -1 || errno != EAGAIN)
+				{
+					done = true;
+					ret = r;
+					thr->resume(false);
+				}
+			});
+
 		si->aio.end_in();
+
+		if(!done)
+			ret = ::accept(si->fd, (sockaddr*)&addr, &len);
 
 		if(ret < 0)
 		{
@@ -260,14 +271,26 @@ namespace netlib
 		socket_internal *si = socket_internal::get(mInternal);
 		if(si && si->fd != -1)
 		{
+			int ret;
+			bool done = false;
+			uthread::handle_t thr = uthread::current();
+
 			si->aio.begin_in();
-			int ret = ::read(si->fd, _buffer, _amt);
-			if(ret < 0 && errno == EAGAIN)
-			{
-				uthread::current()->suspend();
-				ret = ::read(si->fd, _buffer, _amt);
-			}
+			
+			thr->suspend([&]() {
+					int r = ::read(si->fd, _buffer, _amt);
+					if(r != -1 || errno != EAGAIN)
+					{
+						done = true;
+						ret = r;
+						thr->resume(false);
+					}
+				});
+
 			si->aio.end_in();
+
+			if(!done)
+				ret = ::read(si->fd, _buffer, _amt);
 
 			if(ret < 0)
 			{
@@ -286,21 +309,33 @@ namespace netlib
 		socket_internal *si = socket_internal::get(mInternal);
 		if(si && si->fd != -1)
 		{
+			int ret;
+			bool done = false;
+			uthread::handle_t thr = uthread::current();
+
 			si->aio.begin_out();
-			int ret = ::write(si->fd, _buffer, _amt);
-			if(ret < 0 && errno == EAGAIN)
-			{
-				uthread::current()->suspend();
-				ret = ::write(si->fd, _buffer, _amt);
-			}
+
+			thr->suspend([&]() {
+					int r = ::write(si->fd, _buffer, _amt);
+					if(r != -1 || errno != EAGAIN)
+					{
+						done = true;
+						ret = r;
+						thr->resume(false);
+					}
+				});
+
 			si->aio.end_out();
+
+			if(!done)
+				ret = ::write(si->fd, _buffer, _amt);
 
 			if(ret < 0)
 			{
 				close();
 				return 0;
 			}
-
+			
 			return ret;
 		}
 

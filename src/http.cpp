@@ -14,7 +14,6 @@
 namespace netlib
 {
 	using namespace terminal;
-	namespace ws=netlib::websocket;
 
 	//
 	// http_request
@@ -228,7 +227,7 @@ namespace netlib
 		return (int)(val/div);
 	}
 
-	websocket_constructor_t http_response::accept_websocket(http_request const& _req, std::string const& _protocol)
+	websocket http_response::accept_websocket(http_request const& _req, std::string const& _protocol)
 	{
 		std::string key1 = _req.header("Sec-WebSocket-Key1");
 		if(!key1.empty())
@@ -252,18 +251,21 @@ namespace netlib
 			set_header("Upgrade", "WebSocket");
 			set_header("Connection", "Upgrade");
 			set_header("Sec-WebSocket-Origin", _req.header("Origin"));
-			set_header("Sec-WebSocket-Location", "ws://" + _req.header("Host") + _req.path());
-			set_header("Sec-WebSocket-Protocol", _protocol);
+			set_header("Sec-WebSocket-Location",
+					   "ws://" + _req.header("Host") + _req.path());
+			if(!_protocol.empty())
+				set_header("Sec-WebSocket-Protocol", _protocol);
 			send_headers();
 
 			write(resp.data(), resp.size());
 			flush();
 
-			return &mSocket;
+			return websocket(mSocket);
 		}
 		else
 		{
-			key1 = _req.header("Sec-WebSocket-Key") + std::string("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+			key1 = _req.header("Sec-WebSocket-Key")
+				+ std::string("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 
 			sha1 hash;
 			hash.begin();
@@ -279,15 +281,17 @@ namespace netlib
 			set_header("Sec-WebSocket-Accept", key1);
 			set_header("Sec-WebSocket-Version", "8");
 			set_header("Sec-WebSocket-Origin", _req.header("Origin"));
-			set_header("Sec-WebSocket-Location", "ws://" + _req.header("Host") + _req.path());
-			set_header("Sec-WebSocket-Protocol", _protocol);
+			set_header("Sec-WebSocket-Location", 
+					   "ws://" + _req.header("Host") + _req.path());
+			if(!_protocol.empty())
+				set_header("Sec-WebSocket-Protocol", _protocol);
 			send_headers();
 			flush();
 
-			return &mSocket;
+			return websocket(mSocket);
 		}
 
-		return nullptr;
+		return websocket();
 	}
 
 	//
@@ -402,6 +406,11 @@ namespace netlib
 			}
 		}
 
+		// We didn't manage to get a whole
+		// request.
+		if(state <= state_version)
+			return false;
+
 		builder.clear();
 		size_t content_done = sz-done;
 
@@ -433,12 +442,11 @@ namespace netlib
 
 		resp.flush();
 
-		bool close = false;
 		http_headers::const_iterator it = headers.find("Connection");
 		if(it != headers.end() && it->second == "close")
-			close = true;
-		
-		if(close || !ret)
+			ret = false;
+
+		if(!ret)
 			_sock.close();
 
 		return ret;

@@ -162,6 +162,7 @@ namespace netlib
 				return 0;
 			}
 
+			fi->position += ret;
 			return ret;
 		}
 
@@ -188,6 +189,7 @@ namespace netlib
 				return 0;
 			}
 
+			fi->position += ret;
 			return ret;
 		}
 

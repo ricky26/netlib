@@ -19,6 +19,7 @@ namespace netlib
 	{
 		BIO *b64 = BIO_new(BIO_f_base64());
 		BIO *bmem = BIO_new(BIO_s_mem());
+		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
 
 		b64 = BIO_push(b64, bmem);
 		BIO_write(b64, _str.data(), _str.length());
@@ -39,6 +40,8 @@ namespace netlib
 		ret.resize(_str.length());
 
 		BIO *b64 = BIO_new(BIO_f_base64());
+		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+
 		BIO *bmem = BIO_new_mem_buf((void*)_str.data(), _str.length());
 		b64 = BIO_push(b64, bmem);
 

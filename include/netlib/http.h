@@ -6,24 +6,7 @@
 namespace netlib
 {
 	class socket;
-
-	namespace websocket
-	{
-		class websocket;
-	}
-
-	class websocket_constructor_t
-	{
-		friend class websocket::websocket;
-		friend class http_response;
-
-		websocket_constructor_t(netlib::socket *_sock)
-			: socket(_sock)
-		{
-		}
-
-		netlib::socket *socket;
-	};
+	class websocket;
 
 	typedef std::map<std::string, std::string> http_headers;
 
@@ -83,14 +66,15 @@ namespace netlib
 
 		virtual size_t read(void *_buffer, size_t _amt) override;
 		virtual size_t write(const void *_buffer, size_t _amt) override;
-		virtual void flush();
+		virtual void flush() override;
 
 		// Send the headers now, no Content-Length will be
 		// appended, and you can transfer information in a 
 		// streaming fashion.
 		void send_headers();
 
-		websocket_constructor_t accept_websocket(http_request const& _req, std::string const& _prot);
+		websocket accept_websocket(http_request const& _req,
+								   std::string const& _prot="");
 
 	protected:
 		netlib::socket &mSocket;

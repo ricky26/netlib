@@ -8,8 +8,9 @@ namespace netlib
 {
 	class socket;
 
-	namespace websocket
+	class NETLIB_API websocket
 	{
+	public:
 		enum opcode
 		{
 			// Message OpCodes
@@ -60,26 +61,26 @@ namespace netlib
 			std::string mData;
 		};
 
-		class NETLIB_API websocket
-		{
-		public:
-			websocket(netlib::socket *_sock=nullptr);
-			websocket(websocket&);
-			~websocket();
+		websocket();
+		explicit websocket(netlib::socket &_sock);
+		websocket(websocket&);
+		websocket(websocket&&);
+		~websocket();
 
-			bool valid() const;
-			netlib::socket *socket() const;
-			netlib::socket *release();
+		bool valid() const;
+		netlib::socket *socket() const;
+		netlib::socket *release();
+		
+		frame read();
+		bool write(frame const& _frm);
+		bool write(std::string const& _data,
+				netlib::websocket::opcode _code=op_text,
+				int _flags=0);
+		void close(std::string const& _msg="");
 
-			frame read();
-			bool write(frame const& _frm);
-			bool write(std::string const& _data, netlib::websocket::opcode _code=op_text, int _flags=0);
-			void close(std::string const& _msg="");
+		void ping(std::string const& _text="");
 
-			void ping(std::string const& _text="");
-
-		private:
-			netlib::socket *mSocket;
-		};
-	}
+	private:
+		netlib::socket *mSocket;
+	};
 }

@@ -76,7 +76,7 @@ namespace netlib
 		
 		static bool swap(uthread *_other);
 		
-		void resume();
+		void resume(bool _swap=true);
 		
 		template<typename T>
 		inline void raise(T const &_exc) { run([_exc]() { throw _exc; }); }

@@ -2,8 +2,10 @@
 #include "netlib/uthread.h"
 #include <time.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <signal.h>
 #include <exception>
+#include <stdexcept>
 #include <iostream>
 
 namespace netlib
@@ -24,7 +26,7 @@ namespace netlib
 
 		static void sigsegv_handler(int)
 		{
-			throw std::exception();
+			throw std::runtime_error("segmentation fault");
 		}
 
 		static void setup()
@@ -82,7 +84,17 @@ namespace netlib
 
 	void thread::sleep(int _ms)
 	{
-		//msleep(_ms);
+		uint64_t dl = netlib::time() + _ms * 1000;
+		uint64_t t;
+
+		while(t < dl)
+		{
+			uint64_t d = dl-t;
+			if(d > 1000000)
+				sleep(d/1000000);
+			else
+				usleep(d);
+		}
 	}
 
 	thread::handle_t thread::current()

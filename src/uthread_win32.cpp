@@ -150,8 +150,9 @@ namespace netlib
 
 		if(cur->single())
 			swap(dry_thread);
+		else
+			cur->swap_next();
 
-		cur->swap_next();
 		return true;
 	}
 
@@ -167,6 +168,19 @@ namespace netlib
 		}
 		else
 			ths->remove();
+	}
+
+	void uthread::resume(bool _swap)
+	{
+		if(_swap)
+			swap(this);
+		else
+		{
+			mSuspended = false;
+			uthread_impl *ths = static_cast<uthread_impl*>(this);
+			ths->acquire();
+			ths->insert(::netlib::current());
+		}
 	}
 
 	struct uthread_safestart

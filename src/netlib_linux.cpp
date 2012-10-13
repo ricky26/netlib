@@ -9,6 +9,9 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
+#include <iostream>
+#include <stdexcept>
 
 #define MAX_EVENTS 16
 
@@ -69,7 +72,7 @@ namespace netlib
 
 		bool susp = !in.empty();
 		in.push_back(thread);
-		
+
 		if(susp)
 			thread->suspend([](){});
 	}
@@ -77,6 +80,7 @@ namespace netlib
 	void aio_struct::end_in()
 	{
 		in.pop_front();
+
 		if(!in.empty())
 			in.front()->resume();
 	}
@@ -95,6 +99,7 @@ namespace netlib
 	void aio_struct::end_out()
 	{
 		out.pop_front();
+
 		if(!out.empty())
 			out.front()->resume();
 	}
@@ -123,8 +128,10 @@ namespace netlib
 		{
 			if(at_exit_done())
 				atexit(shutdown);
+
+			signal(SIGPIPE, SIG_IGN);
 			
-			gEPollFd = epoll_create(10); // Note: 10 is ignored.
+			gEPollFd = epoll_create1(0);
 
 			thread::init();
 			uthread::init();
@@ -148,11 +155,11 @@ namespace netlib
 	NETLIB_API bool process_io_single(int _timeout)
 	{
 		epoll_event events[MAX_EVENTS];
-		int num = epoll_wait(gEPollFd, events, MAX_EVENTS, 0);
+		int num = epoll_wait(gEPollFd, events, MAX_EVENTS, _timeout);
 		for(int i = 0; i < num; i++)
 		{
 			aio_struct *aio = (aio_struct*)events[i].data.ptr;
-			
+
 			if(events[i].events & EPOLLIN)
 			{
 				if(!aio->in.empty())
@@ -163,6 +170,27 @@ namespace netlib
 			{
 				if(!aio->out.empty())
 					aio->out.front().get()->resume();
+			}
+
+			if(events[i].events & EPOLLHUP
+				|| events[i].events & EPOLLERR)
+			{
+				auto list = aio->out;
+				for(auto it = list.begin();
+					it != list.end();
+					it++)
+					it->get()->raise(std::runtime_error("socket closed"));
+			}
+
+			if(events[i].events & EPOLLRDHUP
+			   || events[i].events & EPOLLHUP
+				|| events[i].events & EPOLLERR)
+			{
+				auto list = aio->in;
+				for(auto it = list.begin();
+					it != list.end();
+					it++)
+					it->get()->raise(std::runtime_error("socket closed"));
 			}
 		}
 

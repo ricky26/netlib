@@ -106,7 +106,7 @@ namespace netlib
 	{
 		gCurrent = next;
 		swapcontext(&context, &next->context);
-		::netlib::current()->after_swap();
+		gCurrent->after_swap();
 	}
 	
 	void uthread_impl::after_swap()
@@ -131,7 +131,7 @@ namespace netlib
 		uthread_impl *cur = ::netlib::current();
 		if(_other == cur)
 			return true;
-		
+
 		uthread_impl *impl = static_cast<uthread_impl*>(_other);
 		if(impl->mSuspended)
 		{
@@ -152,8 +152,8 @@ namespace netlib
 
 		if(cur->single())
 			swap(dry_thread);
-
-		cur->swap_next();
+		else
+			cur->swap_next();
 		return true;
 	}
 
@@ -169,6 +169,20 @@ namespace netlib
 		}
 		else
 			ths->remove();
+	}
+
+	void uthread::resume(bool _swap)
+	{
+		if(_swap)
+			swap(this);
+		else
+		{
+			mSuspended = false;
+
+			uthread_impl *ths = static_cast<uthread_impl*>(this);
+			ths->acquire();
+			ths->insert(::netlib::current());
+		}
 	}
 
 	struct uthread_safestart

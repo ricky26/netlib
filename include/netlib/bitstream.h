@@ -79,16 +79,18 @@ namespace netlib
 		//
 		
 		template<size_t _bufferSize>
-		inline void copy(bitstream &_to)
+		inline bool copy(bitstream &_to)
 		{
 			char buf[_bufferSize];
 			size_t amt;
 
 			while((amt = read(buf, sizeof(buf))), amt > 0)
-				_to.write(buf, amt);
+				if(!_to.write_block(buf, amt))
+					return false;
+			return true;
 		}
 
-		inline void copy(bitstream &_to)
+		inline bool copy(bitstream &_to)
 		{
 			return copy<4096>(_to);
 		}

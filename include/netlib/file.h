@@ -50,7 +50,7 @@ namespace netlib
 		virtual ~file();
 
 		bool valid() const;
-		bool open(std::string const& _path, int _mode);
+		bool open(std::string const& _path, int _mode=mode_open|mode_read);
 		void close();
 
 		uint64_t size();
