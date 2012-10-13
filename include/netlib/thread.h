@@ -79,6 +79,9 @@ namespace netlib
 		thread_condition();
 		virtual ~thread_condition();
 
+		void signal();
+		void broadcast();
+
 	private:
 		void *mInternal;
 	};

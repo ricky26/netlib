@@ -4,7 +4,9 @@
 #include "netlib/socket.h"
 #include "netlib/pipe.h"
 #include "netlib/file.h"
+#include "netlib/exception.h"
 #include "netlib_linux.h"
+#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -15,7 +17,24 @@ namespace netlib
 	int gEPollFd = -1;
 	static bool gIsDone;
 	static int gRetVal;
-	
+
+	static bool at_exit_done()
+	{
+		static bool gDone = false;
+		bool ret = gDone;
+		gDone = true;
+		return !ret;
+	}
+
+	static bool netlib_setup_done(bool _init=true)
+	{
+		static bool gDone = false;
+		bool ret = gDone;
+		gDone = _init;
+
+		return ret ^ _init;
+	}
+
 	aio_struct::~aio_struct()
 	{
 		for(list_t::const_iterator it = in.begin();
@@ -80,40 +99,10 @@ namespace netlib
 			out.front()->resume();
 	}
 
-	NETLIB_API bool init()
+	NETLIB_API void shutdown()
 	{
-		gIsDone = false;
-		gRetVal = 0;
-
-		gEPollFd = epoll_create(10); // Note: 10 is ignored.
-		if(gEPollFd == -1)
-			return false;
-
-		if(!thread::init())
-			return false;
-
-		if(!uthread::init())
-			return false;
-
-		if(!socket::init())
-			return false;
-
-		if(!pipe::init())
-			return false;
-
-		if(!file::init())
-			return false;
-
-		return true;
-	}
-
-	NETLIB_API void exit(int _val)
-	{
-		if(!gIsDone)
+		if(netlib_setup_done(false))
 		{
-			gRetVal = _val;
-			gIsDone = true;
-
 			file::shutdown();
 			pipe::shutdown();
 			socket::shutdown();
@@ -128,16 +117,36 @@ namespace netlib
 		}
 	}
 
+	NETLIB_API void init()
+	{
+		if(netlib_setup_done())
+		{
+			if(at_exit_done())
+				atexit(shutdown);
+			
+			gEPollFd = epoll_create(10); // Note: 10 is ignored.
+
+			thread::init();
+			uthread::init();
+			socket::init();
+			pipe::init();
+			file::init();
+
+			idle(false);
+		}
+	}
+
+	NETLIB_API void exit(int _val)
+	{
+	}
+
 	NETLIB_API int exit_value()
 	{
 		return gRetVal;
 	}
 
-	NETLIB_API bool think()
+	NETLIB_API bool process_io_single(int _timeout)
 	{
-		if(gIsDone)
-			return false;
-
 		epoll_event events[MAX_EVENTS];
 		int num = epoll_wait(gEPollFd, events, MAX_EVENTS, 0);
 		for(int i = 0; i < num; i++)
@@ -157,14 +166,52 @@ namespace netlib
 			}
 		}
 
-		return true;
+		return num > 0;
+	}
+
+	NETLIB_API void process_io(bool _can_block)
+	{
+		int timeout = 0;
+		if(_can_block)
+		{
+			uint64_t dl, t=time();
+			if(!uthread::deadline(dl)) 
+				timeout = -1;
+			else if(dl > t)
+				timeout = (int)((dl-t)/1000);
+		}
+
+		process_io_single(timeout);
+	}
+
+	NETLIB_API void idle(bool _can_block)
+	{
+		process_io(_can_block);
+		thread::sleep(0);
+	}
+
+	NETLIB_API void idle_slave(bool _can_block)
+	{
+		process_io(_can_block);
 	}
 
 	NETLIB_API int run_main_loop()
 	{
-		while(think())
-			uthread::schedule();
+		try
+		{
+			for(;;) { idle(!uthread::schedule()); }
+		}
+		catch(quit_exception const& _e)
+		{
+			return _e.value();
+		}
+	}
+	
+	NETLIB_API uint64_t time()
+	{
+		timespec ts;
+		clock_gettime(CLOCK_MONOTONIC, &ts);
 
-		return exit_value();
+		return ts.tv_nsec + 1000000*(uint64_t)ts.tv_sec;
 	}
 }

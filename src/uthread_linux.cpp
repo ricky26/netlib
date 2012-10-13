@@ -67,8 +67,6 @@ namespace netlib
 		void destroy() override
 		{
 			remove();
-			//DeleteFiber(fiber);
-			//fiber = nullptr;
 			uthread::destroy();
 		}
 
@@ -106,6 +104,7 @@ namespace netlib
 
 	void uthread_impl::swap_next()
 	{
+		gCurrent = next;
 		swapcontext(&context, &next->context);
 		::netlib::current()->after_swap();
 	}
@@ -242,6 +241,8 @@ namespace netlib
 			delete impl;
 			return;
 		}
+
+		gCurrent = impl;
 
 		if(!dry_thread)
 		{

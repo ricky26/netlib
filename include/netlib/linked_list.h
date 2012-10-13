@@ -201,13 +201,13 @@ namespace netlib
 			typedef linked_list_iterator<T> self;
 			
 			inline linked_list_iterator() {}
-			inline linked_list_iterator(node *_nd)
-				: linked_list_const_iterator(_nd) {}
+			inline linked_list_iterator(linked_list_node *_nd)
+                : linked_list_const_iterator<T,A>(_nd) {}
 
 			inline linked_list_iterator(self const& _s)
-				: linked_list_const_iterator(_s) {}
+         		: linked_list_const_iterator<T,A>(_s) {}
 			inline linked_list_iterator(self && _s)
-				: linked_list_const_iterator(_s) {}
+         		: linked_list_const_iterator<T,A>(_s) {}
 		};
 
 		template<typename T, typename A>

@@ -23,7 +23,7 @@ namespace netlib
 		quit_exception(int _code);
 
 		int value() const { return mValue; }
-		virtual const char *what() const override { return mMessage.c_str(); }
+		virtual const char *what() const throw() override { return mMessage.c_str(); }
 
 	protected:
 		int mValue;

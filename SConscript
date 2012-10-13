@@ -14,6 +14,7 @@ netlib_src = [
 	"src/irc.cpp",
 	"src/json.cpp",
 	"src/md5_linux.cpp",
+	"src/netlib.cpp",
 	"src/netlib_linux.cpp",
 	"src/pipe_linux.cpp",
 	"src/ref_counted.cpp",
@@ -25,9 +26,10 @@ netlib_src = [
 	"src/telnet.cpp",
 	"src/terminal.cpp",
 	"src/thread_linux.cpp",
+	"src/uthread.cpp",
 	"src/uthread_linux.cpp",
 	"src/websocket.cpp",
 ]
 
-netlib = env.SharedLibrary('netlib', netlib_src, LIBS=['ssl', 'pthread', 'rt'])
+netlib = env.SharedLibrary('lib/netlib', netlib_src, LIBS=['ssl', 'pthread', 'rt'])
 Export('netlib')

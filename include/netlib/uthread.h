@@ -79,7 +79,7 @@ namespace netlib
 		void resume();
 		
 		template<typename T>
-		inline void raise(T &_exc) { run([_exc]() { throw _exc; }); }
+		inline void raise(T const &_exc) { run([_exc]() { throw _exc; }); }
 
 		template<typename T>
 		inline void timeout_raise(int _ms, T &_exc)
