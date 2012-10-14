@@ -71,15 +71,18 @@ namespace netlib
 
 	bool thread::join()
 	{
-		return true;
+		auto impl = static_cast<thread_impl*>(this);
+		return !pthread_join(impl->handle, NULL);
 	}
 	
 	void thread::exit()
 	{
+		pthread_exit(NULL);
 	}
 
 	void thread::schedule()
 	{
+		sleep(0);
 	}
 
 	void thread::sleep(int _ms)
