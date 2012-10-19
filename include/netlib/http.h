@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 
+#pragma once
+
 namespace netlib
 {
 	class socket;

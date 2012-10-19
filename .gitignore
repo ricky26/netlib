@@ -1,6 +1,7 @@
 Debug
 Release
 x64
+*.cache
 *.user
 .*
 *.os

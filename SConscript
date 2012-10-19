@@ -29,6 +29,7 @@ netlib_src = [
 	"src/uthread.cpp",
 	"src/uthread_linux.cpp",
 	"src/websocket.cpp",
+	"src/uthread_x64.asm"
 ]
 
 netlib = env.SharedLibrary('lib/netlib', netlib_src, LIBS=['ssl', 'pthread', 'rt'])

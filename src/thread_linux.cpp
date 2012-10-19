@@ -87,16 +87,18 @@ namespace netlib
 
 	void thread::sleep(int _ms)
 	{
-		uint64_t dl = netlib::time() + _ms * 1000;
-		uint64_t t;
+		uint64_t t = netlib::time();
+		uint64_t dl = t + _ms * 1000;
 
 		while(t < dl)
 		{
 			uint64_t d = dl-t;
 			if(d > 1000000)
-				sleep(d/1000000);
+				::sleep(d/1000000);
 			else
-				usleep(d);
+				::usleep(d);
+
+			t = netlib::time();
 		}
 	}
 

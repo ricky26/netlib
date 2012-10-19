@@ -117,7 +117,8 @@ namespace netlib
 	socket::socket(socket const& _sock)
 	{
 		socket_internal *si = socket_internal::get(_sock.mInternal);
-		si->acquire();
+		if(si)
+			si->acquire();
 		mInternal = si;
 	}
 
@@ -135,12 +136,17 @@ namespace netlib
 	
 	bool socket::valid() const
 	{
-		return socket_internal::get(mInternal)->fd != -1;
+		if(auto si = socket_internal::get(mInternal))
+			return si->fd != -1;
+		return false;
 	}
 	
 	int socket::handle() const
 	{
-		return socket_internal::get(mInternal)->fd;
+		if(auto si = socket_internal::get(mInternal))
+			return si->fd;
+
+		return -1;
 	}
 	
 	int socket::release()
@@ -226,7 +232,7 @@ namespace netlib
 		socklen_t len = sizeof(addr);
 		uthread::handle_t thr = uthread::current();
 		int ret;
-		bool done;
+		bool done=false;
 
 		si->aio.begin_in();
 

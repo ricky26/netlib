@@ -54,6 +54,11 @@ namespace netlib
 			std::string data() const;
 			uint32_t mask() const;
 
+			static inline frame text(std::string const& _text)
+			{
+				return frame(op_text, 0, _text);
+			}
+
 		private:
 			netlib::websocket::opcode mOpCode;
 			int mFlags;

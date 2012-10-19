@@ -1,10 +1,11 @@
 #include "netlib/uthread.h"
 #include "netlib/thread.h"
-#include <ucontext.h>
+#include <sys/mman.h>
 #include <list>
 #include <iostream>
 #include <exception>
 #include <stdexcept>
+#include "uthread.h"
 
 namespace netlib
 {
@@ -30,7 +31,9 @@ namespace netlib
 			: start(_start),
 			  argument(_param),
 			  next(this),
-			  prev(this)
+			  prev(this),
+			  stacksize(0),
+			  stack(nullptr)
 		{
 			acquire();
 		}
@@ -68,6 +71,9 @@ namespace netlib
 		{
 			remove();
 			uthread::destroy();
+
+			if(stack)
+				munmap(stack, stacksize);
 		}
 
 		void do_run()
@@ -88,9 +94,12 @@ namespace netlib
 		uthread_impl *prev, *next;
 
 		// uThread data
-		ucontext_t context;
 		uthread_start_t start;
 		void *argument;
+
+		size_t stacksize;
+		void *stack;
+		void *context;
 	};
 	
 	//
@@ -104,117 +113,119 @@ namespace netlib
 
 	void uthread_impl::swap_next()
 	{
+		auto ths = gCurrent;
 		gCurrent = next;
-		swapcontext(&context, &next->context);
+		
+		netlib_swap_context(&ths->context, gCurrent->context);
 		gCurrent->after_swap();
-	}
-	
-	void uthread_impl::after_swap()
-	{
-		uthread_impl *p = prev;
+	 }
 
-		if(p->mSuspended)
-		{
-			p->remove();
-			p->do_run();
-			p->release();
-		}
+	 void uthread_impl::after_swap()
+	 {
+		 uthread_impl *p = prev;
 
-		if(mDead)
-			throw std::runtime_error("Dead uthread resumed!");
-		else
-			do_run();
-	}
-		
-	bool uthread::swap(uthread *_other)
-	{
-		uthread_impl *cur = ::netlib::current();
-		if(_other == cur)
-			return true;
+		 if(p->mSuspended)
+		 {
+			 p->remove();
+			 p->do_run();
+			 p->release();
+		 }
 
-		uthread_impl *impl = static_cast<uthread_impl*>(_other);
-		if(impl->mSuspended)
-		{
-			impl->mSuspended = false;
-			impl->acquire();
-		}
+		 if(mDead)
+			 throw std::runtime_error("Dead uthread resumed!");
+		 else
+			 do_run();
+	 }
 
-		impl->insert(cur);
-		cur->swap_next();
-		return true;
-	}
+	 bool uthread::swap(uthread *_other)
+	 {
+		 uthread_impl *cur = ::netlib::current();
+		 if(_other == cur)
+			 return true;
 
-	// TODO: if this works, then it could do with being
-	// not-boolean. -- Ricky26
-	bool uthread::schedule()
-	{
-		uthread_impl *cur = ::netlib::current();
+		 uthread_impl *impl = static_cast<uthread_impl*>(_other);
+		 if(impl->mSuspended)
+		 {
+			 impl->mSuspended = false;
+			 impl->acquire();
+		 }
 
-		if(cur->single())
-			swap(dry_thread);
-		else
-			cur->swap_next();
-		return true;
-	}
+		 impl->insert(cur);
+		 cur->swap_next();
+		 return true;
+	 }
 
-	void uthread::suspend()
-	{
-		uthread_impl *ths = static_cast<uthread_impl*>(this);
+	 // TODO: if this works, then it could do with being
+	 // not-boolean. -- Ricky26
+	 bool uthread::schedule()
+	 {
+		 uthread_impl *cur = ::netlib::current();
 
-		mSuspended = true;
-		if(::netlib::current() == ths)
-		{
-			if(!schedule())
-				throw std::runtime_error("Can't suspend last uthread!");
-		}
-		else
-			ths->remove();
-	}
+		 if(cur->single())
+			 swap(dry_thread);
+		 else
+			 cur->swap_next();
+		 return true;
+	 }
 
-	void uthread::resume(bool _swap)
-	{
-		if(_swap)
-			swap(this);
-		else
-		{
-			mSuspended = false;
+	 void uthread::suspend()
+	 {
+		 uthread_impl *ths = static_cast<uthread_impl*>(this);
 
-			uthread_impl *ths = static_cast<uthread_impl*>(this);
-			ths->acquire();
-			ths->insert(::netlib::current());
-		}
-	}
+		 mSuspended = true;
+		 if(::netlib::current() == ths)
+		 {
+			 if(!schedule())
+				 throw std::runtime_error("Can't suspend last uthread!");
+		 }
+		 else
+			 ths->remove();
+	 }
 
-	struct uthread_safestart
-	{
-		~uthread_safestart()
-		{
-			uthread::current()->exit();
-		}
-	};
+	 void uthread::resume(bool _swap)
+	 {
+		 if(_swap)
+			 swap(this);
+		 else
+		 {
+			 mSuspended = false;
 
-	static void uthread_start(void *_param)
-	{
-		// TODO: Thread safety.
-		
-		uthread_impl *impl = static_cast<uthread_impl*>(_param);
-		uthread_safestart ss;
+			 uthread_impl *ths = static_cast<uthread_impl*>(this);
+			 ths->acquire();
+			 ths->insert(::netlib::current());
+		 }
+	 }
 
-		impl->after_swap();
-		impl->start(impl->argument);
-	}
+	 struct uthread_safestart
+	 {
+		 ~uthread_safestart()
+		 {
+			 uthread::current()->exit();
+		 }
+	 };
 
-	uthread_impl *uthread_create(uthread::uthread_start_t _start, void *_param)
-	{
-		uthread_impl *cur = ::netlib::current();
-		handle<uthread_impl> thr = new uthread_impl(_start, _param);
+	 static void uthread_start(void *_param)
+	 {
+		 // TODO: Thread safety.
 
-		getcontext(&thr->context);
-		thr->context.uc_stack.ss_sp = malloc(1024*1024);
-		thr->context.uc_stack.ss_size =1024 * 1024;
-		thr->context.uc_stack.ss_flags = 0;
-		thr->context.uc_link = &cur->context;
-		makecontext(&thr->context, (void(*)())&uthread_start, 1, thr.get());
+		 uthread_impl *impl = static_cast<uthread_impl*>(_param);
+		 uthread_safestart ss;
+
+		 impl->after_swap();
+		 impl->start(impl->argument);
+	 }
+
+	 uthread_impl *uthread_create(uthread::uthread_start_t _start, void *_param)
+	 {
+		 uthread_impl *cur = ::netlib::current();
+		 handle<uthread_impl> thr = new uthread_impl(_start, _param);
+
+		 const size_t stacksize = 2*1024*1024;
+		 thr->stacksize = stacksize;
+		 thr->stack = mmap(NULL, thr->stacksize, PROT_READ|PROT_WRITE,
+						   MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+		 thr->context = netlib_make_context((uint8_t*)thr->stack + thr->stacksize,
+											uthread_start, thr.get());
 		return thr.get();
 	}
 
@@ -236,12 +247,10 @@ namespace netlib
 	
 	static void uthread_dry(void *)
 	{
+		uthread_impl *impl = netlib::current();
+		impl->suspend();
 		for(;;)
 		{
-			// TODO: figure out how to deal with
-			// messages _AND_ IO whilst blocking
-			// in the kernel. :<
-			uthread_impl *impl = netlib::current();
 			while(impl->single()) idle(false);
 			impl->suspend();
 		}
@@ -249,19 +258,13 @@ namespace netlib
 	
 	void uthread::enter_thread()
 	{
-		uthread_impl *impl = new uthread_impl();
-		if(getcontext(&impl->context) < 0)
-		{
-			delete impl;
-			return;
-		}
-
-		gCurrent = impl;
+		handle<uthread_impl> impl(new uthread_impl());
+		gCurrent = impl.get();
 
 		if(!dry_thread)
 		{
 			dry_thread = uthread_create(uthread_dry, nullptr);
-			dry_thread->mSuspended = true;
+			dry_thread->suspend();
 		}
 
 		enter_thread_common();
